@@ -1,0 +1,47 @@
+<h1 class="contract">creategroup</h1>
+
+---
+spec_version: "0.2.0"
+title: creategroup
+summary: Create a new bot group
+icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+---
+
+
+<h1 class="contract">addtogroup</h1>
+
+---
+spec_version: "0.2.0"
+title: addtogroup
+summary: 'Create a new token'
+icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+---
+
+
+<h1 class="contract">rmfromgroup</h1>
+
+---
+spec_version: "0.2.0"
+title: rmfromgroup
+summary: 'Issue {{nowrap quantity}} into circulation and transfer into {{nowrap to}}’s account'
+icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+---
+
+<h1 class="contract">setgroupdesc</h1>
+
+---
+spec_version: "0.2.0"
+title: Open Token Balance
+summary: 'Open a zero quantity balance for {{nowrap owner}}'
+icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+---
+
+<h1 class="contract">deletegroup</h1>
+
+---
+spec_version: "0.2.0"
+title: Remove Tokens from Circulation
+summary: 'Remove {{nowrap quantity}} from circulation'
+icon: @ICON_BASE_URL@/@TOKEN_ICON_URI@
+---
+

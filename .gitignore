@@ -1,0 +1,8 @@
+build/
+.vscode/
+.clang-format
+.idea/
+.history/
+.DS_Store
+.dist/
+__pycache__
