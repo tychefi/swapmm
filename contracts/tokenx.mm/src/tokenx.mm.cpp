@@ -52,8 +52,18 @@ namespace flon {
 
    //TODO
    ///Perm: bot accounts
-   void tokenx_mm::exectrade( const name& bot_account, const name& plan_name, const bool& is_buy, const asset& amount ) {
+   void tokenx_mm::exectrade( const name& bot_account, const bool& is_buy, const asset& amount ) {
+      require_auth( bot_account );
 
+      CHECKC( _gstate.status == Status.RUNNING, err::NOT_STARTED, "system paused" )
+
+      _check_bot( bot_account );
+
+      if (is_buy) {
+         _process_buy(); 
+      } else {
+         _process_sell();
+      }
    }
 
    void tokenx_mm::on_transfer(const name& from, const name& to, const asset& quant, const string& memo) {
@@ -94,5 +104,15 @@ namespace flon {
 
          _gstate.token_balance.amount           += quant.amount;
       }
+   }
+
+   //Spend USDT
+   void tokenx_mm::_process_buy() {
+
+   }
+
+   //Spend token
+   void tokenx_mm::_process_buy() {
+      
    }
 }
