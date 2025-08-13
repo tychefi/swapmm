@@ -123,9 +123,15 @@ namespace flon {
       // Generate a pseudo-random number and check if even/odd for 50% probability
       return( (seed % 2) == 0 );
    }
+   double tokenx_mm::_get_token_price() {
+      return 0; //FIXME
+   }
 
    void tokenx_mm::_process_buy() {
-
+      double price = _get_token_price();
+      auto target_price = price * (1 + _gstate.fluctuation_ratio );
+      auto target_quant = asset( 100, USDT ); //FIXME
+      TRANSFER( _gstate.usdt_contract, _gstate.dex_contract, target_quant, "" )
    }
 
    void tokenx_mm::_process_sell() {

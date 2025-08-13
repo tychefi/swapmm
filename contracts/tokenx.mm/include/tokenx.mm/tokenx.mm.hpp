@@ -84,6 +84,7 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
       void _process_plan_investment( const asset& quant );
       void _process_trade_settlement( const asset& quant );
       bool _even_odds_buy();
+      double _get_token_price();
       void _process_buy();
       void _process_sell();
 

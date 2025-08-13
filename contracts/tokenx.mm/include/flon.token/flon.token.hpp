@@ -9,7 +9,7 @@ namespace flon {
 
     constexpr name active_perm = "active"_n;
 
-    #define TRANSFER_X(bank, to, quantity, memo) \
+    #define TRANSFER(bank, to, quantity, memo) \
     {	arc_token::transfer_action act{ bank, { {_self, active_perm} } };\
 			act.send( _self, to, quantity , memo );} 
 
