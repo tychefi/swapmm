@@ -25,7 +25,7 @@ namespace PriceMode {   //price trend
     static constexpr eosio::name    SIDEWAYS  { "sideways"_n    }; //or range-bound
 }
 
-namespace Status {
+namespace TradeStatus {
     static constexpr eosio::name    PENDING   { "pending"_n     };
     static constexpr eosio::name    RUNNING   { "running"_n     };
 }
@@ -54,11 +54,11 @@ NTBL("global") global_t {
     asset                       token_balance;
     asset                       usdt_balance;
     name                        price_mode          = PriceMode::SIDEWAYS; //UPWARD | DOWNWARD | SIDEWAYS
-    name                        status              = Status::PENDING;
+    name                        trade_status        = TradeStatus::PENDING;
 
     EOSLIB_SERIALIZE( global_t, (dex_contract)(token_contract)(usdt_contract)(superadmin)(bot_group_name)(price_mode_admin)(token_symbol)
                                 (fluctuation_ratio)(initial_token_price)(invested_token_balance)(invested_usdt_balance)
-                                (token_balance)(usdt_balance)(price_mode)(status) )
+                                (token_balance)(usdt_balance)(price_mode)(trade_status) )
 };
 typedef eosio::singleton< "global"_n, global_t > global_singleton;
 

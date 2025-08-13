@@ -26,17 +26,17 @@ namespace flon {
    void tokenx_mm::pause() {
       CHECKC( has_auth( _self ) || has_auth( _gstate.superadmin ), err::NO_AUTH, "neither self nor superadmin" )
 
-      CHECKC( _gstate.status != Status::PENDING, err::STATUS_ERROR, "already paused" )
+      CHECKC( _gstate.trade_status != TradeStatus::PENDING, err::STATUS_ERROR, "already paused" )
 
-      _gstate.status = Status::PENDING;
+      _gstate.trade_status = TradeStatus::PENDING;
    }
 
    void tokenx_mm::resume() {
       CHECKC( has_auth( _self ) || has_auth( _gstate.superadmin ), err::NO_AUTH, "neither self nor superadmin" )
 
-      CHECKC( _gstate.status != Status::RUNNING, err::STATUS_ERROR, "already running" )
+      CHECKC( _gstate.trade_status != TradeStatus::RUNNING, err::STATUS_ERROR, "already running" )
 
-      _gstate.status = Status::RUNNING;
+      _gstate.trade_status = TradeStatus::RUNNING;
    }
 
    /// Perm: price_mode_admin
@@ -52,17 +52,18 @@ namespace flon {
 
    //TODO
    ///Perm: bot accounts
-   void tokenx_mm::exectrade( const name& bot_account, const bool& is_buy, const asset& amount ) {
+   void tokenx_mm::exectrade( const name& bot_account ) {
       require_auth( bot_account );
 
-      CHECKC( _gstate.status == Status.RUNNING, err::NOT_STARTED, "system paused" )
+      CHECKC( _gstate.trade_status == TradeStatus::RUNNING, err::NOT_STARTED, "system paused" )
 
       _check_bot( bot_account );
 
-      if (is_buy) {
-         _process_buy(); 
-      } else {
-         _process_sell();
+      switch( _gstate.price_mode.value ) {
+         case PriceMode::UPWARD.value: _process_buy(); break;
+         case PriceMode::DOWNWARD.value: _process_sell(); break;
+         case PriceMode::SIDEWAYS.value: if( _even_odds_buy() ) _process_buy(); else _process_sell(); break;
+         default: CHECKC( false, err::PARAM_ERROR, "Invalid Price Mode" ) 
       }
    }
 
@@ -80,6 +81,10 @@ namespace flon {
       }
 
       // CHECKC( false, err::MEMO_FORMAT_ERROR, "invalid memo" )
+   }
+
+   void tokenx_mm::_check_bot( const name& bot_account ) {
+
    }
 
    void tokenx_mm::_process_plan_investment( const asset& quant ) {
@@ -106,13 +111,24 @@ namespace flon {
       }
    }
 
-   //Spend USDT
+   //generate a random boolean with even chance (50% probability)
+   bool tokenx_mm::_even_odds_buy() {
+      // Use transaction ID and current time for pseudo-randomness
+      auto tapos = eosio::tapos_block_prefix();
+      auto timestamp = current_time_point().sec_since_epoch();
+
+      // Combine tapos and timestamp for a seed
+      uint64_t seed = tapos ^ timestamp; //bitwise XOR
+
+      // Generate a pseudo-random number and check if even/odd for 50% probability
+      return( (seed % 2) == 0 );
+   }
+
    void tokenx_mm::_process_buy() {
 
    }
 
-   //Spend token
-   void tokenx_mm::_process_buy() {
-      
+   void tokenx_mm::_process_sell() {
+
    }
 }

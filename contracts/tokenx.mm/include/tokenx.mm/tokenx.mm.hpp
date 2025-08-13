@@ -70,7 +70,7 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
    ACTION pause() ;
    ACTION resume() ;
    ACTION setpricemode( const name& plan_name, const name& price_mode);
-   ACTION exectrade( const name& bot_account, const name& plan_name, const bool& is_buy, const asset& amount );
+   ACTION exectrade( const name& bot_account );
 
    [[eosio::on_notify("flon.mtoken::transfer")]]
    void on_transfer(const name& from, const name& to, const asset& quant, const string& memo);
@@ -80,8 +80,12 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
       global_t            _gstate;
 
    private:
+      void _check_bot( const name& bot_account );
       void _process_plan_investment( const asset& quant );
       void _process_trade_settlement( const asset& quant );
+      bool _even_odds_buy();
+      void _process_buy();
+      void _process_sell();
 
 };
 
