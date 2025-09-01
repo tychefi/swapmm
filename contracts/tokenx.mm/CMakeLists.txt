@@ -11,3 +11,4 @@ set_target_properties(tokenx.mm
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/ricardian/tokenx.mm.contracts.md.in ${CMAKE_CURRENT_BINARY_DIR}/ricardian/tokenx.mm.contracts.md @ONLY )
 
 target_compile_options( tokenx.mm PUBLIC -R${CMAKE_CURRENT_SOURCE_DIR}/ricardian -R${CMAKE_CURRENT_BINARY_DIR}/ricardian )
+target_link_libraries(tokenx.mm flon_base)

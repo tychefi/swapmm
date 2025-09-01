@@ -35,5 +35,6 @@ if(NOT "${CONTRACT_COMPILE_OPTIONS_FILE}" STREQUAL "")
 endif()
 
 
+add_subdirectory(libs)
 add_subdirectory(bot.mm)
 add_subdirectory(tokenx.mm)

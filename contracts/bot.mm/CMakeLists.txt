@@ -11,3 +11,4 @@ set_target_properties(bot.mm
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/ricardian/bot.mm.contracts.md.in ${CMAKE_CURRENT_BINARY_DIR}/ricardian/bot.mm.contracts.md @ONLY )
 
 target_compile_options( bot.mm PUBLIC -R${CMAKE_CURRENT_SOURCE_DIR}/ricardian -R${CMAKE_CURRENT_BINARY_DIR}/ricardian )
+target_link_libraries(bot.mm flon_base)
