@@ -24,16 +24,16 @@ using namespace eosio;
 #define NTBL(name) struct [[eosio::table(name), eosio::contract("bot_mm")]]
 
 NTBL("global") global_t {
-    name                        superadmin = "flonian"_n;
-    
-    EOSLIB_SERIALIZE( global_t, (superadmin) )
+    name                        admin = "flonian"_n;
+
+    EOSLIB_SERIALIZE( global_t, (admin) )
 };
 typedef eosio::singleton< "global"_n, global_t > global_singleton;
 
 TBL bot_group_t {
     name                        group_name;     //PK
-    string                      group_desc;
-    set<name>                   bot_accounts;
+    string                      desc;
+    set<name>                   bots;
 
     bot_group_t() {}
     bot_group_t(const name& n): group_name(n) {}
@@ -42,7 +42,7 @@ TBL bot_group_t {
 
     typedef eosio::multi_index< "botgroups"_n,  bot_group_t> idx_t;
 
-    EOSLIB_SERIALIZE( bot_group_t, (group_name)(group_desc)(bot_accounts) )
+    EOSLIB_SERIALIZE( bot_group_t, (group_name)(desc)(bots) )
 };
 
 } //namespace flon

@@ -1,99 +1,107 @@
 #include <bot.mm/bot.mm.hpp>
-#include <flon.token/flon.token.hpp>
+#include <flon/utils.hpp>
+#include <contract_version.hpp>
 
 static constexpr eosio::name active_permission{"active"_n};
 
 namespace flon {
    using namespace std;
 
-   #define CHECKC(exp, code, msg) \
-      { if (!(exp)) eosio::check(false, string("[[") + to_string((int)code) + string("]] ")  \
-                                    + string("[[") + _self.to_string() + string("]] ") + msg); }
+   #ifdef ENABLE_CONTRACT_VERSION
+   DEFINE_VERSION_CONTRACT_CLASS("bot.mm", bot_mm)
+   #endif//ENABLE_CONTRACT_VERSION
 
-   // void bot_mm::init( const extended_asset& fee_info, const name& fee_collector) {
-   //    CHECKC(has_auth(_self),  err::NO_AUTH, "no auth for operate");
-      
-   //    _gstate.fee_info           = fee_info;
-   //    _gstate.fee_collector      = fee_collector;
-   // }
+   void bot_mm::require_admin_auth() const {
+      CHECKC(has_auth(_self) || (_gstate.admin.value != 0 && has_auth(_gstate.admin)),
+         err::NO_AUTH, "miss self or admin authorization");
+   }
 
-   void bot_mm::creategroup(const name& group_name, const string& group_desc, const vector<name>& accounts ) {
-      CHECKC( has_auth( _self ) || has_auth( _gstate.superadmin ), err::NO_AUTH, "neither self nor superadmin" )
+   void bot_mm::setadmin( const name& admin ) {
+      require_admin_auth();
 
-      auto group           = bot_group_t( group_name );
-      CHECKC( !_db.get( group ), err::RECORD_EXISTING, "group already existing: " + group_name.to_string() )
+      _gstate.admin = admin;
+   }
 
-      group.group_desc     = group_desc;
+   void bot_mm::setgroup(const name& group_name, const string& desc, const set<name>& bots ) {
 
-      for( auto& account : accounts ) {
-         group.bot_accounts.insert( account );
+      require_admin_auth();
+
+      auto groups           = bot_group_t::idx_t( get_self(), get_self().value );
+      auto itr = groups.find( group_name.value );
+      if ( itr == groups.end() ) {
+         groups.emplace( group_name, [&] (auto& row) {
+            row.group_name = group_name;
+            row.desc = desc;
+            row.bots   = bots;
+         } );
+      } else {
+         groups.modify( itr, same_payer, [&] (auto& row) {
+            row.desc = desc;
+            row.bots = bots;
+         } );
       }
+   }
 
-      _db.set( group );
+   void bot_mm::addtogroup( const name& group_name, const set<name>& bots ) {
+      require_admin_auth();
+
+      auto groups    = bot_group_t::idx_t( get_self(), get_self().value );
+      auto itr       = groups.find( group_name.value );
+      CHECKC( itr == groups.end(), err::RECORD_NOT_FOUND, "group not existed: " + group_name.to_string() )
+
+      bool added = false;
+      groups.modify( itr, same_payer, [&] (auto& row) {
+         for (const auto& a : bots) {
+            auto ret = row.bots.insert( a );
+            if (ret.second) {
+               added = true;
+            }
+         }
+      } );
+
+      CHECKC( added, err::RECORD_EXISTING, "No new account added." )
 
    }
 
-   void bot_mm::addtogroup( const name& group_name, const vector<name>& accounts ) {
-      CHECKC( has_auth( _self ) || has_auth( _gstate.superadmin ), err::NO_AUTH, "neither self nor superadmin" )
+   void bot_mm::rmfromgroup( const name& group_name, const set<name>& bots ) {
+      require_admin_auth();
 
-      auto group           = bot_group_t( group_name );
-      CHECKC( _db.get( group ), err::RECORD_NOT_FOUND, "group not existing: " + group_name.to_string() )
+      auto groups    = bot_group_t::idx_t( get_self(), get_self().value );
+      auto itr       = groups.find( group_name.value );
+      CHECKC( itr == groups.end(), err::RECORD_NOT_FOUND, "group not existed: " + group_name.to_string() )
 
-      auto added           = false;
-      for( const auto& account : accounts ) {
-         if( group.bot_accounts.find( account ) != group.bot_accounts.end() ) continue;
+      bool removed = false;
+      groups.modify( itr, same_payer, [&] (auto& row) {
+         for (const auto& a : bots) {
+            auto size = row.bots.erase( a );
+            if (size > 0) {
+               removed = true;
+            }
+         }
+      } );
 
-         group.bot_accounts.insert( account );
-         if( !added ) 
-            added          = true;
-      }
-
-      CHECKC( added, err::RECORD_EXISTING, "must add non-existing accounts only" )
-
-      _db.set( group );
-
+      CHECKC( removed, err::RECORD_NOT_FOUND, "No account removed." )
    }
 
-   void bot_mm::rmfromgroup( const name& group_name, const vector<name>& accounts ) {
-      CHECKC( has_auth( _self ) || has_auth( _gstate.superadmin ), err::NO_AUTH, "neither self nor superadmin" )
+   void bot_mm::setgroupdesc( const name group_name, const string& desc ) {
+      require_admin_auth();
 
-      auto group           = bot_group_t( group_name );
-      CHECKC( _db.get( group ), err::RECORD_NOT_FOUND, "group not existing: " + group_name.to_string() )
-      
-      auto removed           = false;
-      for( const auto& account : accounts ) {
-         if( group.bot_accounts.find( account ) == group.bot_accounts.end() ) continue;
+      auto groups    = bot_group_t::idx_t( get_self(), get_self().value );
+      auto itr       = groups.find( group_name.value );
+      CHECKC( itr == groups.end(), err::RECORD_NOT_FOUND, "group not existed: " + group_name.to_string() )
 
-         group.bot_accounts.erase( account );
-
-         if( !removed ) 
-            removed          = true;
-      }
-
-      CHECKC( removed, err::RECORD_NOT_FOUND, "must remove existing accounts only" )
-
-      _db.set( group );
-
-   }
-
-   void bot_mm::setgroupdesc( const name group_name, const string& group_desc ) {
-      CHECKC( has_auth( _self ) || has_auth( _gstate.superadmin ), err::NO_AUTH, "neither self nor superadmin" )
-
-      auto group           = bot_group_t( group_name );
-      CHECKC( _db.get( group ), err::RECORD_NOT_FOUND, "group not existing: " + group_name.to_string() )
-
-      group.group_desc     = group_desc;
-      _db.set( group );
-
+      groups.modify( itr, same_payer, [&] (auto& row) {
+         row.desc = desc;
+      } );
    }
 
    void bot_mm::deletegroup( const name& group_name ) {
-      CHECKC( has_auth( _self ) || has_auth( _gstate.superadmin ), err::NO_AUTH, "neither self nor superadmin" )
+      require_admin_auth();
 
-      auto group           = bot_group_t( group_name );
-      CHECKC( _db.get( group ), err::RECORD_NOT_FOUND, "group not existing: " + group_name.to_string() )
+      auto groups    = bot_group_t::idx_t( get_self(), get_self().value );
+      auto itr       = groups.find( group_name.value );
+      CHECKC( itr == groups.end(), err::RECORD_NOT_FOUND, "group not existed: " + group_name.to_string() )
 
-      _db.del( group );
-
+      groups.erase( itr );
    }
 }

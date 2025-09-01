@@ -34,6 +34,7 @@ if(NOT "${CONTRACT_COMPILE_OPTIONS_FILE}" STREQUAL "")
   add_compile_options("${CONTRACT_COMPILE_OPTIONS}")
 endif()
 
+include_directories(${CONTRACT_VERSION_DIR})
 
 add_subdirectory(libs)
 add_subdirectory(bot.mm)
