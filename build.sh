@@ -17,15 +17,16 @@ function usage() {
   exit 1
 }
 
-BUILD_TESTS=false
+# BUILD_TESTS=false
 
 if [ $# -ne 0 ]; then
-  while getopts "t:c:i:m:yh" opt; do
+  # while getopts "t:c:i:m:yh" opt; do
+  while getopts "c:i:m:yh" opt; do
     case "${opt}" in
-    t)
-      CHAIN_CORE_INSTALL_DIR=$OPTARG
-      BUILD_TESTS=true
-    ;;
+    # t)
+    #   CHAIN_CORE_INSTALL_DIR=$OPTARG
+    #   BUILD_TESTS=true
+    # ;;
     i)
       INSTALL_LOCATION=$OPTARG
       ;;
@@ -55,26 +56,26 @@ if [ $# -ne 0 ]; then
 fi
 
 # Source helper functions and variables.
-TEST_DIR=${PROJECT_DIR}/tests
-. ${ROOT_DIR}/scripts/.environment
-. ${ROOT_DIR}/scripts/helper.sh
+# TEST_DIR=${PROJECT_DIR}/tests
+# . ${ROOT_DIR}/scripts/.environment
+# . ${ROOT_DIR}/scripts/helper.sh
 
-if [[ ${BUILD_TESTS} == true ]]; then
-echo "CHAIN_CORE_INSTALL_DIR=${CHAIN_CORE_INSTALL_DIR}"
-  if [[ "$CHAIN_CORE_INSTALL_DIR" == "" ]]; then
-    echo "Chain Core Lib directory is required when building tests." 1>&2
-    usage
-  fi
-  if [[ ! -d $CHAIN_CORE_INSTALL_DIR ]]; then
-    echo "Chain Core Lib directory does not exist: $CHAIN_CORE_INSTALL_DIR" 1>&2
-    usage
-  fi
+# if [[ ${BUILD_TESTS} == true ]]; then
+# echo "CHAIN_CORE_INSTALL_DIR=${CHAIN_CORE_INSTALL_DIR}"
+#   if [[ "$CHAIN_CORE_INSTALL_DIR" == "" ]]; then
+#     echo "Chain Core Lib directory is required when building tests." 1>&2
+#     usage
+#   fi
+#   if [[ ! -d $CHAIN_CORE_INSTALL_DIR ]]; then
+#     echo "Chain Core Lib directory does not exist: $CHAIN_CORE_INSTALL_DIR" 1>&2
+#     usage
+#   fi
 
-  # Include CHAIN_CORE_INSTALL_DIR in CMAKE_PREFIX_PATH
-  echo "Using CHAIN_CORE installation at: $CHAIN_CORE_INSTALL_DIR"
-  [[ ! -z ${CMAKE_PREFIX_PATH} ]] && CMAKE_PREFIX_PATH=":${CMAKE_PREFIX_PATH}"
-  export CMAKE_PREFIX_PATH="${CHAIN_CORE_INSTALL_DIR}${CMAKE_PREFIX_PATH}"
-fi
+#   # Include CHAIN_CORE_INSTALL_DIR in CMAKE_PREFIX_PATH
+#   echo "Using CHAIN_CORE installation at: $CHAIN_CORE_INSTALL_DIR"
+#   [[ ! -z ${CMAKE_PREFIX_PATH} ]] && CMAKE_PREFIX_PATH=":${CMAKE_PREFIX_PATH}"
+#   export CMAKE_PREFIX_PATH="${CHAIN_CORE_INSTALL_DIR}${CMAKE_PREFIX_PATH}"
+# fi
 
 if [[ "${CMAKE_OPTIONS}" != "" ]]; then
   echo "Using CMAKE_OPTIONS=${CMAKE_OPTIONS}"
@@ -86,6 +87,7 @@ NC='\033[0m'
 CPU_CORES=$(getconf _NPROCESSORS_ONLN)
 mkdir -p build
 pushd build &>/dev/null
-cmake -DBUILD_TESTS=${BUILD_TESTS} -DCMAKE_INSTALL_PREFIX="${INSTALL_LOCATION}" -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} ${CMAKE_OPTIONS} ../
+# -DBUILD_TESTS=${BUILD_TESTS}
+cmake  -DCMAKE_INSTALL_PREFIX="${INSTALL_LOCATION}" -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} ${CMAKE_OPTIONS} ../
 make -j $CPU_CORES ${MAKE_TARGET}
 popd &>/dev/null
