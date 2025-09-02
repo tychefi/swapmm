@@ -7,9 +7,7 @@ static constexpr eosio::name active_permission{"active"_n};
 namespace flon {
    using namespace std;
 
-   #ifdef ENABLE_CONTRACT_VERSION
    DEFINE_VERSION_CONTRACT_CLASS("bot.mm", bot_mm)
-   #endif//ENABLE_CONTRACT_VERSION
 
    void bot_mm::require_admin_auth() const {
       CHECKC(has_auth(_self) || (_gstate.admin.value != 0 && has_auth(_gstate.admin)),
