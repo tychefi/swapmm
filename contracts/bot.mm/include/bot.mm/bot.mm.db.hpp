@@ -30,13 +30,11 @@ NTBL("global") global_t {
 };
 typedef eosio::singleton< "global"_n, global_t > global_singleton;
 
+// scope: self
 TBL bot_group_t {
     name                        group_name;     //PK
     string                      desc;
     set<name>                   bots;
-
-    bot_group_t() {}
-    bot_group_t(const name& n): group_name(n) {}
 
     uint64_t primary_key()const { return group_name.value; }
 

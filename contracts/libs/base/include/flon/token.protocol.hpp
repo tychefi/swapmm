@@ -3,19 +3,19 @@
 #include <eosio/eosio.hpp>
 #include <flon/nasset.hpp>
 
-#define TRANSFER_OUT(contract, to, assets, memo) \
+#define TRANSFER_OUT(contract, to, asset, memo) \
     {	flon::flon_token::transfer_action act{ contract, { {_self, "active"_n} } };\
-			act.send( _self, to, assets , memo );}
+			act.send( _self, to, asset , memo );}
 
-#define TRANSFER(contract, from, to, assets, memo) \
+#define TRANSFER(contract, from, to, asset, memo) \
     {	flon::flon_token::transfer_action act{ contract, { {from, "active"_n} } };\
-			act.send( from, to, assets , memo );}
+			act.send( from, to, asset , memo );}
 
-#define TRANSFER_OUT(contract, to, assets, memo) \
+#define TRANSFER_NFT_OUT(contract, to, assets, memo) \
     {	flon::flon_nft_token::transfer_action act{ contract, { {_self, "active"_n} } };\
 			act.send( _self, to, assets , memo );}
 
-#define TRANSFER(contract, from, to, assets, memo) \
+#define TRANSFER_NFT(contract, from, to, assets, memo) \
     {	flon::flon_nft_token::transfer_action act{ contract, { {from, "active"_n} } };\
 			act.send( from, to, assets , memo );}
 
@@ -139,7 +139,7 @@ namespace flon {
          using open_action = eosio::action_wrapper<"open"_n, &flon_token::open>;
          using close_action = eosio::action_wrapper<"close"_n, &flon_token::close>;
 
-      private:
+      // private:
          struct [[eosio::table]] account {
             asset    balance;
 

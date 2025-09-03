@@ -41,7 +41,7 @@ TBL trade_market_t {
 
     uint64_t primary_key()const { return trade_market_name.value; }
 
-    typedef eosio::multi_index< "trademarket"_n,  trade_market_t> idx_t;
+    typedef eosio::multi_index< "trademarkets"_n,  trade_market_t> idx_t;
 
     EOSLIB_SERIALIZE( trade_market_t, (trade_market_name)(paused)(dest_price)(memo)(updaters)(created_at)(updated_at) )
 };
