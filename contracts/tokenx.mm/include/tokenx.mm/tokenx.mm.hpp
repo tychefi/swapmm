@@ -77,6 +77,13 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
    [[eosio::on_notify("flon.mtoken::transfer")]]
    void on_transfer(const name& from, const name& to, const asset& quant, const string& memo);
 
+
+   ACTION afterswap(const name& bot, const asset& input_quantity, const asset& bot_balance_before);
+
+
+
+   using afterswap_action = eosio::action_wrapper<"afterswap"_n, &tokenx_mm::afterswap>;
+
    private:
       global_singleton    _global;
       global_t            _gstate;

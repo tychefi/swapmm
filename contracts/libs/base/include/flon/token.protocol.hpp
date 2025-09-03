@@ -124,11 +124,23 @@ namespace flon {
             return st.supply;
          }
 
-         static asset get_balance( const name& token_contract_account, const name& owner, const symbol_code& sym_code )
+         static asset get_balance( const name& token_contract_account, const name& owner, const symbol& sym, bool checking_account = true )
          {
-            accounts accountstable( token_contract_account, owner.value );
-            const auto& ac = accountstable.get( sym_code.raw() );
-            return ac.balance;
+            accounts statstable( token_contract_account, owner.value );
+
+            auto acct_itr = statstable.find( owner.value );
+            if ( acct_itr != statstable.end() ) {
+               eosio::check( sym.precision() == acct_itr->balance.symbol.precision(),
+                  "symbol precision mismatch, expecting " + std::to_string(sym.precision()) +
+                  ", got " + std::to_string(acct_itr->balance.symbol.precision()) );
+               return acct_itr->balance;
+            } else {
+               if (checking_account) {
+                  eosio::check( false, "account " + owner.to_string() + " not exist in " + token_contract_account.to_string() );
+               } else {
+                  return asset( 0, sym );
+               }
+            }
          }
 
          using create_action = eosio::action_wrapper<"create"_n, &flon_token::create>;

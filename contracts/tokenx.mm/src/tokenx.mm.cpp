@@ -187,13 +187,7 @@ namespace flon {
          ASSERT( _gstate.left_balance <= _gstate.left_total_quant )
 
          flon_token::accounts accounts( input_contract, bot.value );
-         asset bot_balance_before = asset(0, _gstate.left_balance.symbol);
-         auto bot_acct_itr = accounts.find( bot.value );
-         if ( bot_acct_itr != accounts.end() ) {
-            const auto& ac = accounts.get( _gstate.left_balance.symbol.code().raw() );
-            bot_balance_before = bot_acct_itr->balance;
-         }
-
+         asset bot_balance_before = flon_token::get_balance( _gstate.left_contract, bot, _gstate.left_balance.symbol, false );
 
          if ( bot_balance_before < input_quantity ) {
             CHECKC( _gstate.left_total_quant.amount / 4 >= input_quantity.amount, err::PARAM_ERROR,
@@ -201,6 +195,8 @@ namespace flon {
             int64_t max_bot_balance_amount = min(_gstate.left_total_quant.amount / 4, _gstate.left_balance.amount);
             CHECKC( bot_balance_before.amount + max_bot_balance_amount >= input_quantity.amount, err::PARAM_ERROR,
                "Left pool balance insufficient" )
+            ASSERT( bot_balance_before.amount < std::numeric_limits<int64_t>::max() - max_bot_balance_amount );
+            bot_balance_before.amount += max_bot_balance_amount;
             // TODO: transfer out to bot， check in ontransfer
             asset transfer_quant = asset(max_bot_balance_amount, _gstate.left_balance.symbol);
             _gstate.left_balance       -= transfer_quant;
@@ -209,7 +205,9 @@ namespace flon {
             TRANSFER_OUT(input_contract, bot, transfer_quant, "")
          }
 
-         // input_quantity 将被交易成另一侧的资产，所以需要做：1. 从左侧总量中扣除；2. 在交易完成后，向右侧总量和右侧余额增加交易收到的右侧资产
+         // input_quantity will be exchanged for the asset on the other side, so the following steps are required:
+         //    1. Deduct it from the total amount on the left side;
+         //    2. After the trade is completed, add the received asset to both the total amount and the balance on the right side.
          _gstate.left_total_quant -= input_quantity;
          asset min_received = asset((double)input_quantity.amount * price * (1 - _gstate.max_slippage), _gstate.right_balance.symbol);
 
@@ -218,6 +216,9 @@ namespace flon {
          TRANSFER(input_contract, bot, _gstate.dex_contract, input_quantity, swap_memo)
 
          // TODO: after swap: add received_asset to _gstate.right_total_quant and _gstate.right_balance
+         // const asset& input_quantity, const asset& bot_balance_before,
+         afterswap_action act{ get_self(), { {get_self(), "active"_n} } };
+         act.send( bot, input_quantity, bot_balance_before );
 
       } else { // right_side
       }
@@ -241,58 +242,26 @@ namespace flon {
       }
    }
 
-   // void tokenx_mm::_check_bot( const name& bot_account ) {
+   void tokenx_mm::afterswap(const name& bot, const asset& input_quantity, const asset& bot_received_before) {
+      require_auth(get_self());
 
-   // }
+      if (input_quantity.symbol == _gstate.left_balance.symbol) {
+         ASSERT(bot_received_before.symbol == _gstate.right_balance.symbol);
+         // left -> right
+         asset bot_balance_after = flon_token::get_balance( _gstate.right_contract, bot, _gstate.right_balance.symbol, true );
+         CHECKC( bot_balance_after >= bot_received_before, err::STATUS_ERROR, "bot balance after swap is less than before" )
+         asset actual_received = bot_balance_after - bot_received_before;
+         // The asset is still in the bot account, so the received from the swap contract is only added to the total quantity.
+         _gstate.right_total_quant += actual_received;
 
-   // void tokenx_mm::_process_plan_investment( const asset& quant ) {
-   //    if( quant.symbol == USDT ) {
-   //       _gstate.invested_usdt_balance.amount   += quant.amount;
-   //       _gstate.usdt_balance.amount            += quant.amount;
+         // TODO: collect received assets
+         // auto bot_groups = bot_group_t::idx_t( _gstate.bots_contract, get_self().value );
+         // auto bot_group_itr = bot_groups.find(_gstate.bot_group_name.value);
+         // CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + _gstate.bot_group_name.to_string() )
+         // CHECKC( bot_group_itr->bots.size() > 0, err::RECORD_NOT_FOUND, "bot group has no bot: " + _gstate.bot_group_name.to_string() )
+         // TODO: if bot_balance_after >= _gstate.right_total_quantity / bot_group_itr->bots.size()
+         //          transfer_quantity = bot_balance_after - _gstate.right_total_quantity / 2 / bot_group_itr->bots.size()
+      }
+   }
 
-   //    } else {
-   //       CHECKC( _gstate.token_symbol == quant.symbol, err::PARAM_ERROR, "quant symobl invalid" )
-
-   //       _gstate.invested_token_balance.amount  += quant.amount;
-   //       _gstate.token_balance.amount           += quant.amount;
-   //    }
-   // }
-
-   // void tokenx_mm::_process_trade_settlement( const asset& quant ) {
-   //    if( quant.symbol == USDT ) {
-   //        _gstate.usdt_balance.amount           += quant.amount;
-
-   //    } else {
-   //       CHECKC( _gstate.token_symbol == quant.symbol, err::PARAM_ERROR, "quant symobl invalid" )
-
-   //       _gstate.token_balance.amount           += quant.amount;
-   //    }
-   // }
-
-   // //generate a random boolean with even chance (50% probability)
-   // bool tokenx_mm::_even_odds_buy() {
-   //    // Use transaction ID and current time for pseudo-randomness
-   //    auto tapos = eosio::tapos_block_prefix();
-   //    auto timestamp = current_time_point().sec_since_epoch();
-
-   //    // Combine tapos and timestamp for a seed
-   //    uint64_t seed = tapos ^ timestamp; //bitwise XOR
-
-   //    // Generate a pseudo-random number and check if even/odd for 50% probability
-   //    return( (seed % 2) == 0 );
-   // }
-   // double tokenx_mm::_get_token_price() {
-   //    return 0; //FIXME
-   // }
-
-   // void tokenx_mm::_process_buy() {
-   //    double price = _get_token_price();
-   //    auto target_price = price * (1 + _gstate.fluctuation_ratio );
-   //    auto target_quant = asset( 100, USDT ); //FIXME
-   //    TRANSFER( _gstate.usdt_contract, _gstate.dex_contract, target_quant, "" )
-   // }
-
-   // void tokenx_mm::_process_sell() {
-
-   // }
 }
