@@ -98,48 +98,6 @@ namespace flon {
       _gstate.bots_contract = bots_contract;
     }
 
-   // void tokenx_mm::init(const name& bot_group_name, const name& price_mode_admin,
-   //                      const double& fluct_ratio, const double& init_token_price ) {
-
-   //    CHECKC( has_auth( _self ) || has_auth( _gstate.admin ), err::NO_AUTH, "neither self nor admin" )
-   //    CHECKC( is_account( price_mode_admin ), err::ACCOUNT_INVALID, "account invalid: " + price_mode_admin.to_string() )
-
-   //    _gstate.bot_group_name     = bot_group_name;
-   //    _gstate.price_mode_admin   = price_mode_admin;
-   //    _gstate.fluctuation_ratio  = fluct_ratio;
-   //    _gstate.initial_token_price= init_token_price;
-
-   // }
-
-   // void tokenx_mm::pause() {
-   //    CHECKC( has_auth( _self ) || has_auth( _gstate.admin ), err::NO_AUTH, "neither self nor admin" )
-
-   //    CHECKC( _gstate.trade_status != TradeStatus::PENDING, err::STATUS_ERROR, "already paused" )
-
-   //    _gstate.trade_status = TradeStatus::PENDING;
-   // }
-
-   // void tokenx_mm::resume() {
-   //    CHECKC( has_auth( _self ) || has_auth( _gstate.admin ), err::NO_AUTH, "neither self nor admin" )
-
-   //    CHECKC( _gstate.trade_status != TradeStatus::RUNNING, err::STATUS_ERROR, "already running" )
-
-   //    _gstate.trade_status = TradeStatus::RUNNING;
-   // }
-
-   /// Perm: price_mode_admin
-   // void tokenx_mm::setpricemode( const name& submitter, const name& price_mode) {
-   //    require_auth( submitter );
-
-   //    CHECKC( _gstate.price_mode_admin == submitter, err::NO_AUTH, "not price_mode_admin: " + submitter.to_string() )
-   //    CHECKC( _gstate.price_mode != price_mode, err::PARAM_ERROR, "price mode unchanged" )
-
-   //    _gstate.price_mode        = price_mode;
-
-   // }
-
-   //TODO
-   ///Perm: bot accounts
    void tokenx_mm::exectrade( const string& memo ) {
       require_admin_auth();
 
