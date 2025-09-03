@@ -40,29 +40,42 @@ static constexpr symbol USDT                                = symbol(symbol_code
 #define TBL struct [[eosio::table, eosio::contract("tokenx_mm")]]
 #define NTBL(name) struct [[eosio::table(name), eosio::contract("tokenx_mm")]]
 
+struct dex_pool_side_t {
+    extended_asset     balance;
+    asset              total_quantity;
+
+    EOSLIB_SERIALIZE( dex_pool_side_t, (balance)(total_quantity) )
+};
+
+static const dex_pool_side_t LEFT_SIDE_POOL = {
+    .balance = extended_asset(asset(0, FLON), "flon.token"_n),
+    .total_quantity = asset(0, FLON)
+};
+
+static const dex_pool_side_t RIGHT_SIDE_POOL = {
+    .balance = extended_asset(asset(0, USDT), "flon.mtoken"_n),
+    .total_quantity = asset(0, USDT)
+};
+
 NTBL("global") global_t {
-    name     admin               = "flonian"_n;        // Administrator account name
-    name     bots_contract       = "bot.mm"_n;         // bot manager contract name
-    name     dex_contract        = "flon.swap"_n;      // DEX contract name for trading
-    name     trade_pair_name     = "flon.usdt"_n;      // Trading pair name
-    name     left_contract       = "flon.token"_n;     // Contract name for the left-side asset
-    name     right_contract      = "flon.mtoken"_n;    // Contract name for the right-side asset
-    name     bot_group_name      = "flon.usdt"_n;        // Bot group name for managing trading bots
-    asset    left_balance       = asset(0, FLON);      // Current balance of the left-side asset
-    asset    right_balance      = asset(0, USDT);      // Current balance of the right-side asset
-    asset    left_total_quant   = asset(0, FLON);      // Total quantity of the left-side asset
-    asset    right_total_quant  = asset(0, USDT);      // Total quantity of the right-side asset
-    double   max_slippage        = 0.1;                // Maximum allowed slippage (default: 10%)
-    double   fluctuation_ratio   = 0.1;                // Price fluctuation ratio for sideways market (default: 10%)
-    uint32_t min_trade_seconds   = 10;                 // Minimum interval between trades in seconds (default: 10)
-    uint32_t max_trade_seconds   = 30;                 // Maximum interval between trades in seconds (default: 30)
-    asset    min_trade_amount   = asset(0, FLON);      // Minimum amount per trade
-    asset    max_trade_amount   = asset(0, FLON);      // Maximum amount per trade
+    name            admin               = "flonian"_n;      // Administrator account name
+    name            bots_contract       = "bot.mm"_n;       // bot manager contract name
+    name            dex_contract        = "flon.swap"_n;    // DEX contract name for trading
+    name            trade_pair_name     = "flon.usdt"_n;    // Trading pair name
+    name            bot_group_name      = "flon.usdt"_n;    // Bot group name for managing trading bots
+    dex_pool_side_t left_pool           = LEFT_SIDE_POOL;   // Left side pool info
+    dex_pool_side_t right_pool          = RIGHT_SIDE_POOL;  // Right side pool info
+    double          max_slippage        = 0.1;                // Maximum allowed slippage (default: 10%)
+    double          fluctuation_ratio   = 0.1;                // Price fluctuation ratio for sideways market (default: 10%)
+    uint32_t        min_trade_seconds   = 10;                 // Minimum interval between trades in seconds (default: 10)
+    uint32_t        max_trade_seconds   = 30;                 // Maximum interval between trades in seconds (default: 30)
+    asset           min_trade_amount    = asset(0, FLON);      // Minimum amount per trade, it must be left side amount
+    asset           max_trade_amount    = asset(0, FLON);      // Maximum amount per trade, it must be left side amount
 
 
-    EOSLIB_SERIALIZE( global_t, (admin)(dex_contract)(trade_pair_name)(left_contract)(right_contract)(bot_group_name)
-                                (left_balance)(right_balance)(left_total_quant)(right_total_quant)(max_slippage)(fluctuation_ratio)
-                                (min_trade_seconds)(max_trade_seconds)(min_trade_amount)(max_trade_amount) )
+    EOSLIB_SERIALIZE( global_t, (admin)(dex_contract)(trade_pair_name)(left_pool)(right_pool)(bot_group_name)
+                                (max_slippage)(fluctuation_ratio)(min_trade_seconds)(max_trade_seconds)
+                                (min_trade_amount)(max_trade_amount) )
 };
 typedef eosio::singleton< "global"_n, global_t > global_singleton;
 
