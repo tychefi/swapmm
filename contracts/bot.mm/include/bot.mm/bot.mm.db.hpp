@@ -20,8 +20,8 @@ using namespace std;
 using namespace eosio;
 
 
-#define TBL struct [[eosio::table, eosio::contract("bot_mm")]]
-#define NTBL(name) struct [[eosio::table(name), eosio::contract("bot_mm")]]
+#define TBL struct [[eosio::table, eosio::contract("bot.mm")]]
+#define NTBL(name) struct [[eosio::table(name), eosio::contract("bot.mm")]]
 
 NTBL("global") global_t {
     name                        admin = "flonian"_n;

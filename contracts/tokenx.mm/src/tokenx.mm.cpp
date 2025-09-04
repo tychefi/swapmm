@@ -108,13 +108,21 @@ namespace flon {
       auto market_itr = markets.find(_gstate.trade_pair_name.value);
       CHECKC( market_itr != markets.end(), err::RECORD_NOT_FOUND, "market not existed: " + _gstate.trade_pair_name.to_string() )
       CHECKC( market_itr->target_price > 0, err::STATUS_ERROR, "invalid market target price" )
+      CHECKC( market_itr->min_trade_amount.symbol == _gstate.left_pool.balance.quantity.symbol,
+         err::STATUS_ERROR, "left pool symbol mismatch with min_trade_amount.symbol" )
+      CHECKC( market_itr->max_trade_amount.symbol == _gstate.left_pool.balance.quantity.symbol,
+         err::STATUS_ERROR, "left pool symbol mismatch with max_trade_amount.symbol" )
+      CHECKC( market_itr->min_trade_amount <= market_itr->max_trade_amount,
+         err::STATUS_ERROR, "min trade amount can not less than max trade amount" )
+      CHECKC( market_itr->min_trade_amount.amount > 0,
+         err::STATUS_ERROR, "invalid market min trade amount" )
 
-      auto bot_groups = bot_group_t::idx_t( _gstate.bot_mgr_contract, get_self().value );
+      auto bot_groups = bot_group_t::idx_t( _gstate.bot_mgr_contract, _gstate.bot_mgr_contract.value );
       auto bot_group_itr = bot_groups.find(_gstate.bot_group_name.value);
       CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + _gstate.bot_group_name.to_string() )
       CHECKC( bot_group_itr->bots.size() > 0, err::RECORD_NOT_FOUND, "bot group has no bot: " + _gstate.bot_group_name.to_string() )
 
-      auto swap_markets = swap_market_t::idx_t( get_self(), get_self().value );
+      auto swap_markets = swap_market_t::idx_t( _gstate.dex_contract, _gstate.dex_contract.value );
       auto swap_market_itr = swap_markets.find( _gstate.trade_pair_name.value );
       CHECKC( swap_market_itr != swap_markets.end(), err::RECORD_NOT_FOUND, "swap market not existed: " + _gstate.trade_pair_name.to_string() )
       CHECKC( swap_market_itr->left_pool_quant.contract == _gstate.left_pool.balance.contract,

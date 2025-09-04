@@ -89,23 +89,21 @@ fucli -u "$node_url" push action "$buylowsellhi_contract" setadmin '{"admin":"'$
 echo "Setting trade market ${tp_code} for buylowsellhi contract ..."
 trade_market_name="$tp_code"
 paused=false
-target=0.01
+target_price=0.01
+min_trade_amount="1.00000000 FLON"
+max_trade_amount="100.00000000 FLON"
 memo="$tp_code market"
 updaters_json=$(printf '"%s",' "${bot_users[@]}" | sed 's/,$//')
 settrademkt_data='{
     "trade_market_name":"'$trade_market_name'",
     "paused":'$paused',
-    "target":'$target',
+    "target_price":'$target_price',
+    "min_trade_amount":"'"$min_trade_amount"'",
+    "max_trade_amount":"'"$max_trade_amount"'",
     "memo":"'$memo'",
     "updaters":['$updaters_json']
 }'
-   ACTION settrademkt( name         trade_market_name,
-                       bool         paused,
-                       double       target,
-                       asset        min_trade_amount,
-                       asset        max_trade_amount,
-                       string       memo,
-                       set<name>    updaters );
+
 fucli -u "$node_url" push action "$buylowsellhi_contract" settrademkt "$settrademkt_data" -p "$buylowsellhi_contract@active"
 
 #5. init tokenx.mm contract
