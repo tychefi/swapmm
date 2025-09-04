@@ -17,28 +17,6 @@ using std::string;
 // using namespace wasm::db;
 using namespace eosio;
 
-// enum class err: uint8_t {
-//    NONE                 = 0,
-//    RECORD_NOT_FOUND     = 1,
-//    RECORD_EXISTING      = 2,
-//    SYMBOL_MISMATCH      = 4,
-//    PARAM_ERROR          = 5,
-//    MEMO_FORMAT_ERROR    = 6,
-//    PAUSED               = 7,
-//    NO_AUTH              = 8,
-//    NOT_POSITIVE         = 9,
-//    NOT_STARTED          = 10,
-//    OVERSIZED            = 11,
-//    TIME_EXPIRED         = 12,
-//    NOTIFY_UNRELATED     = 13,
-//    ACTION_REDUNDANT     = 14,
-//    ACCOUNT_INVALID      = 15,
-//    FEE_INSUFFICIENT     = 16,
-//    FIRST_CREATOR        = 17,
-//    STATUS_ERROR         = 18,
-//    SCORE_NOT_ENOUGH     = 19,
-//    NEED_MANUAL_CHECK    = 20
-// };
 
 /**
  * The `tokenx_mm` sample system contract defines the structures and actions that allow users to create, issue, and manage tokens for flon based blockchains. It demonstrates one way to implement a smart contract which allows for creation and management of tokens. It is possible for one to create a similar contract which suits different needs. However, it is recommended that if one only needs a token with the below listed actions, that one uses the `tokenx_mm` contract instead of developing their own.
@@ -61,17 +39,11 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
     }
     ~tokenx_mm() { _global.set( _gstate, get_self() ); }
 
-   // ACTION init(const name& bot_group_name, const name& price_mode_admin,
-   //             const double& fluct_ratio, const double& init_token_price );
-
     ACTION setadmin( const name& admin );
 
-    ACTION cfgbots( const name& bots_contract );
+    ACTION cfgbotmgr( const name& bot_mgr_contract );
 
 
-   // ACTION pause() ;
-   // ACTION resume() ;
-   // ACTION setpricemode( const name& plan_name, const name& price_mode);
    ACTION exectrade( const string& memo );
 
    [[eosio::on_notify("flon.mtoken::transfer")]]
@@ -79,8 +51,6 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
 
 
    ACTION afterswap(const name& bot, const asset& input_quantity, const asset& bot_balance_before);
-
-
 
    using afterswap_action = eosio::action_wrapper<"afterswap"_n, &tokenx_mm::afterswap>;
 

@@ -10,9 +10,14 @@ namespace flon {
 
    DEFINE_VERSION_CONTRACT_CLASS("buylowsellhi", buylowsellhi)
 
-   void buylowsellhi::require_admin_auth() const {
-      CHECKC(has_auth(_self) || (_gstate.admin.value != 0 && has_auth(_gstate.admin)),
-         err::NO_AUTH, "miss self or admin authorization");
+   const name& buylowsellhi::require_admin_auth() const {
+      if (_gstate.admin.value != 0 && has_auth(_gstate.admin)) {
+         return _gstate.admin;
+      } else if (has_auth(_self)) {
+         return _self;
+      } else {
+         CHECKC(false, err::NO_AUTH, "miss self or admin authorization");
+      }
    }
 
    void buylowsellhi::setadmin( const name& admin ) {
@@ -23,28 +28,34 @@ namespace flon {
 
    void buylowsellhi::settrademkt(  name trade_market_name,
                                     bool paused,
-                                    double dest_price,
+                                    double target_price,
+                                    asset min_trade_amount,
+                                    asset max_trade_amount,
                                     string memo,
                                     set<name> updaters ) {
 
-      require_admin_auth();
+      auto auth_admin = require_admin_auth();
 
-      auto markets           = trade_market_t::idx_t( get_self(), get_self().value );
+      auto markets = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr = markets.find( trade_market_name.value );
       if ( itr == markets.end() ) {
-         markets.emplace( trade_market_name, [&] (auto& row) {
+         markets.emplace( auth_admin, [&] (auto& row) {
             row.trade_market_name   = trade_market_name;
             row.paused              = paused;
-            row.dest_price          = dest_price;
+            row.target_price        = target_price;
+            row.min_trade_amount    = min_trade_amount;
+            row.max_trade_amount    = max_trade_amount;
             row.memo                = memo;
             row.updaters            = updaters;
             row.created_at          = current_time_point();
             row.updated_at          = row.created_at;
          } );
       } else {
-         markets.modify( itr, same_payer, [&] (auto& row) {
+         markets.modify( itr, auth_admin, [&] (auto& row) {
             row.paused              = paused;
-            row.dest_price          = dest_price;
+            row.target_price        = target_price;
+            row.min_trade_amount    = min_trade_amount;
+            row.max_trade_amount    = max_trade_amount;
             row.memo                = memo;
             row.updaters            = updaters;
             row.updated_at          = current_time_point();
@@ -68,7 +79,7 @@ namespace flon {
    }
 
 
-   void buylowsellhi::setprice( const name& updater, const name& trade_market_name, double dest_price ) {
+   void buylowsellhi::setprice( const name& updater, const name& trade_market_name, double target_price ) {
       require_auth( updater );
 
       auto markets    = trade_market_t::idx_t( get_self(), get_self().value );
@@ -77,10 +88,10 @@ namespace flon {
 
       CHECKC( updater == get_self() || updater == _gstate.admin || itr->updaters.count( updater ), err::NO_AUTH, "updater no permission:" + updater.to_string() );
 
-      CHECKC( itr->dest_price != dest_price, err::PARAM_ERROR, "market price no change" )
+      CHECKC( itr->target_price != target_price, err::PARAM_ERROR, "market price no change" )
 
       markets.modify( itr, same_payer, [&] (auto& row) {
-         row.dest_price          = dest_price;
+         row.target_price        = target_price;
          row.updated_at          = current_time_point();
       } );
    }

@@ -17,6 +17,8 @@ namespace flon {
       name            trade_market_name;           // trading market name, PK
       bool            paused              = true;  // is this market paused
       double          target_price        = 0.0;   // target price
+      asset           min_trade_amount;            // Minimum amount allowed in each trade, it must be left side
+      asset           max_trade_amount;            // Maximum amount allowed in each trade, it must be left side
       string          memo;
 
     uint64_t primary_key()const { return trade_market_name.value; }
@@ -93,9 +95,9 @@ namespace flon {
    }
 
 
-    void tokenx_mm::cfgbots( const name& bots_contract ) {
+    void tokenx_mm::cfgbotmgr( const name& bot_mgr_contract ) {
       require_admin_auth();
-      _gstate.bots_contract = bots_contract;
+      _gstate.bot_mgr_contract = bot_mgr_contract;
     }
 
    void tokenx_mm::exectrade( const string& memo ) {
@@ -107,7 +109,7 @@ namespace flon {
       CHECKC( market_itr != markets.end(), err::RECORD_NOT_FOUND, "market not existed: " + _gstate.trade_pair_name.to_string() )
       CHECKC( market_itr->target_price > 0, err::STATUS_ERROR, "invalid market target price" )
 
-      auto bot_groups = bot_group_t::idx_t( _gstate.bots_contract, get_self().value );
+      auto bot_groups = bot_group_t::idx_t( _gstate.bot_mgr_contract, get_self().value );
       auto bot_group_itr = bot_groups.find(_gstate.bot_group_name.value);
       CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + _gstate.bot_group_name.to_string() )
       CHECKC( bot_group_itr->bots.size() > 0, err::RECORD_NOT_FOUND, "bot group has no bot: " + _gstate.bot_group_name.to_string() )
@@ -147,7 +149,7 @@ namespace flon {
       else
          left_ratio = left_ratio_sideways;
       bool is_left_side = uint32_t(left_ratio * 10000'0000) % 10000'0000 < rand % 10000'0000;
-      auto trading_left_amount = get_random_range( _gstate.min_trade_amount.amount, _gstate.max_trade_amount.amount, rand );
+      auto trading_left_amount = get_random_range( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount, rand );
 
       name bot = bot_group_itr->bots[rand % bot_group_itr->bots.size()];
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
@@ -315,7 +317,7 @@ namespace flon {
       output_pool->total_quantity += actual_received;
 
       // TODO: collect received assets
-      // auto bot_groups = bot_group_t::idx_t( _gstate.bots_contract, get_self().value );
+      // auto bot_groups = bot_group_t::idx_t( _gstate.bot_mgr_contract, get_self().value );
       // auto bot_group_itr = bot_groups.find(_gstate.bot_group_name.value);
       // CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + _gstate.bot_group_name.to_string() )
       // CHECKC( bot_group_itr->bots.size() > 0, err::RECORD_NOT_FOUND, "bot group has no bot: " + _gstate.bot_group_name.to_string() )

@@ -50,15 +50,19 @@ class [[eosio::contract("buylowsellhi")]] buylowsellhi : public contract {
     * @brief Create or update a trade market.
     * @param trade_market_name The name of the trade market.
     * @param paused Whether the market is paused.
-    * @param dest_price The target price for the market.
+    * @param target_price The target price for the market.
+    * @param min_trade_amount The minimum trade amount allowed in each trade.
+    * @param max_trade_amount The maximum trade amount allowed in each trade.
     * @param memo Description or memo for the market.
     * @param updaters Set of updater account names.
     */
-   ACTION settrademkt( name trade_market_name,
-                       bool paused,
-                       double dest_price,
-                       string memo,
-                       set<name> updaters );
+   ACTION settrademkt( name         trade_market_name,
+                       bool         paused,
+                       double       target_price,
+                       asset        min_trade_amount,
+                       asset        max_trade_amount,
+                       string       memo,
+                       set<name>    updaters );
 
    /**
     * @brief Set the pause status of a trade market.
@@ -72,9 +76,9 @@ class [[eosio::contract("buylowsellhi")]] buylowsellhi : public contract {
     * @brief Set the target price of a trade market.
     * @param updater The account requesting the update.
     * @param trade_market_name The name of the trade market.
-    * @param dest_price The new target price.
+    * @param target_price The new target price.
     */
-   ACTION setprice( const name& updater, const name& trade_market_name, double dest_price );
+   ACTION setprice( const name& updater, const name& trade_market_name, double target_price );
 
    /**
     * @brief Set the updaters for a trade market.
@@ -93,7 +97,7 @@ class [[eosio::contract("buylowsellhi")]] buylowsellhi : public contract {
       global_singleton    _global;
       global_t            _gstate;
 
-      void require_admin_auth() const;
+      const name& require_admin_auth() const;
 
 };
 
