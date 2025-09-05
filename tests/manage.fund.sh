@@ -67,3 +67,14 @@ fucli -u "$node_url" transfer "$bot_admin" "$tokenx_mm_contract" "10000.0 FLON" 
 
 #2.2 deposit 100 USDT
 fucli -u "$node_url" transfer "$bot_admin" "$tokenx_mm_contract" "100.0 USDT" --contract "flon.mtoken" -p "$bot_admin@active"
+
+
+#[optional]    ACTION tokenx_mm::updatefund(const asset& left_pool_balance, const asset& left_pool_total,
+                    #  const asset& right_pool_balance, const asset& right_pool_total)
+# If fund info mismatch, you can call updatefund action to update the fund info in the contract
+fucli -u "$node_url" push action "$tokenx_mm_contract" updatefund '{
+    "left_pool_balance": "20010.47029090 FLON",
+    "left_pool_total": "20010.47029090 FLON",
+    "right_pool_balance": "200.000000 USDT",
+    "right_pool_total": "200.000000 USDT"
+}' -p "$tokenx_mm_contract@active"

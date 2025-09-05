@@ -3,7 +3,7 @@
 # set -e
 # Configurations
 tokenx_mm_contract="tokenxmm1111"
-node_url="https://t1.flonscan.io"
+node_url="http://hk-t3.vm.nestar.vip:18888"
 interval_min=10      # Minimum interval in seconds
 interval_max=60      # Maximum interval in seconds
 
@@ -32,5 +32,5 @@ while true; do
     log "$result"
     sleep_time=$(( RANDOM % (interval_max - interval_min + 1) + interval_min ))
     log "wait for: ${sleep_time}s"
-    log "$sleep_time"
+    sleep "$sleep_time"
 done

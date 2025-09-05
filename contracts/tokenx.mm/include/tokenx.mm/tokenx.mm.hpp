@@ -46,11 +46,14 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
 
    ACTION exectrade( const string& memo );
 
-   [[eosio::on_notify("flon.mtoken::transfer")]]
+   [[eosio::on_notify("*::transfer")]]
    void on_transfer(const name& from, const name& to, const asset& quant, const string& memo);
 
 
    ACTION afterswap(const name& bot, const asset& input_quantity, const asset& bot_balance_before);
+
+   ACTION updatefund(const asset& left_pool_balance, const asset& left_pool_total,
+                     const asset& right_pool_balance, const asset& right_pool_total);
 
    using afterswap_action = eosio::action_wrapper<"afterswap"_n, &tokenx_mm::afterswap>;
 

@@ -128,7 +128,7 @@ namespace flon {
          {
             accounts statstable( token_contract_account, owner.value );
 
-            auto acct_itr = statstable.find( owner.value );
+            auto acct_itr = statstable.find( sym.code().raw() );
             if ( acct_itr != statstable.end() ) {
                eosio::check( sym.precision() == acct_itr->balance.symbol.precision(),
                   "symbol precision mismatch, expecting " + std::to_string(sym.precision()) +
@@ -137,10 +137,9 @@ namespace flon {
             } else {
                if (checking_account) {
                   eosio::check( false, "account " + owner.to_string() + " not exist in " + token_contract_account.to_string() );
-               } else {
-                  return asset( 0, sym );
                }
             }
+            return asset( 0, sym );
          }
 
          using create_action = eosio::action_wrapper<"create"_n, &flon_token::create>;

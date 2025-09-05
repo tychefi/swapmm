@@ -100,6 +100,20 @@ namespace flon {
       _gstate.bot_mgr_contract = bot_mgr_contract;
     }
 
+    static double calc_price(const asset& input_pool_quantity, const asset& output_pool_quantity) {
+      int64_t in_amount = input_pool_quantity.amount;
+      int64_t out_amount = output_pool_quantity.amount;
+      int64_t in_boost = power10(input_pool_quantity.symbol.precision());
+      int64_t out_boost = power10(output_pool_quantity.symbol.precision());
+      return (double)out_amount * in_boost / (in_amount * out_boost);
+    }
+
+   static double calc_trade_out(double price, int64_t input_amount, const symbol& input_symbol, const symbol& output_symbol) {
+      int64_t in_boost = power10(input_symbol.precision());
+      int64_t out_boost = power10(output_symbol.precision());
+      return (double)input_amount * price * out_boost / in_boost;
+   }
+
    void tokenx_mm::exectrade( const string& memo ) {
       require_admin_auth();
 
@@ -134,8 +148,12 @@ namespace flon {
       CHECKC( swap_market_itr->right_pool_quant.quantity.symbol == _gstate.right_pool.balance.quantity.symbol,
          err::PARAM_ERROR, "right pool symbol mismatch" )
 
-      double left_price = swap_market_itr->right_pool_quant.quantity.amount > 0 ?
-         swap_market_itr->left_pool_quant.quantity.amount / swap_market_itr->right_pool_quant.quantity.amount : 0;
+      CHECKC( swap_market_itr->left_pool_quant.quantity.amount > 0, err::STATUS_ERROR, "invalid dex market left pool amount" )
+      CHECKC( swap_market_itr->right_pool_quant.quantity.amount > 0, err::STATUS_ERROR, "invalid dex market right pool amount" )
+      int64_t left_pool_amount = swap_market_itr->left_pool_quant.quantity.amount;
+      int64_t right_pool_amount = swap_market_itr->right_pool_quant.quantity.amount;
+      double right_to_left_ratio = (double)right_pool_amount / left_pool_amount;
+      double left_price = calc_price(swap_market_itr->left_pool_quant.quantity, swap_market_itr->right_pool_quant.quantity);
 
       CHECKC( left_price > 0, err::STATUS_ERROR, "invalid market actual price" )
 
@@ -163,64 +181,14 @@ namespace flon {
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
 
       if ( is_left_side ) {
-         auto& input_pool = _gstate.left_pool;
-         // const auto& input_contract = input_pool.balance.contract;
-         // const auto& input_symbol = input_pool.balance.quantity.symbol;
-         // auto& input_pool_balance = input_pool.balance.quantity;
-
-         auto& output_pool = _gstate.right_pool;
-         // const auto& output_contract = output_pool.balance.contract;
-         // const auto& output_symbol = output_pool.balance.quantity.symbol;
-         // int64_t price = left_price;
-
-         // double price = 1 / left_price;
-         // int64_t input_amount = (double)trading_left_amount * left_price;
-         do_trade(side,  _gstate.right_pool, _gstate.left_pool, left_price, trading_left_amount, bot, bot_group_itr->bots.size());
-
-         // asset input_quantity = asset( trading_left_amount, input_symbol );
-         // CHECKC( input_quantity.amount > 0, err::PARAM_ERROR,
-         //    side.to_string() + " side bot balance after swap is less than before" )
-         // CHECKC( input_quantity <= input_pool.total_quantity, err::PARAM_ERROR,
-         //    side.to_string() + " side bot balance after swap is less than before" )
-         // ASSERT( input_pool_balance <= input_pool.total_quantity )
-
-         // asset bot_balance_before = flon_token::get_balance( input_contract, bot, input_symbol, false );
-
-         // if ( bot_balance_before < input_quantity ) {
-         //    CHECKC( input_pool.total_quantity.amount / 4 >= input_quantity.amount, err::PARAM_ERROR,
-         //       side.to_string() + " side total quantity is too small" )
-         //    int64_t max_bot_balance_amount = min(input_pool.total_quantity.amount / 4, input_pool_balance.amount);
-         //    CHECKC( bot_balance_before.amount + max_bot_balance_amount >= input_quantity.amount, err::PARAM_ERROR,
-         //       side.to_string() + " side balance insufficient" )
-         //    ASSERT( bot_balance_before.amount < std::numeric_limits<int64_t>::max() - max_bot_balance_amount );
-         //    bot_balance_before.amount += max_bot_balance_amount;
-         //    // TODO: transfer out to bot， check in ontransfer
-         //    asset transfer_quant = asset(max_bot_balance_amount, input_symbol);
-         //    input_pool_balance       -= transfer_quant;
-         //    // _gstate.left_total_quant   -= transfer_quant;
-         //    // TODO: transfer_out memo: out:{nonce}
-         //    TRANSFER_OUT(input_contract, bot, transfer_quant, "")
-         // }
-
-         // // input_quantity will be exchanged for the asset on the other side, so the following steps are required:
-         // //    1. Deduct it from the total amount on the left side;
-         // //    2. After the trade is completed, add the received asset to both the total amount and the balance on the right side.
-         // input_pool.total_quantity -= input_quantity;
-         // asset min_received = asset((double)input_quantity.amount * price * (1 - _gstate.max_slippage), output_symbol);
-
-         // // swap
-         // std::string swap_memo = "swap:" + min_received.to_string() + ":" + _gstate.trade_pair_name.to_string();
-         // TRANSFER(input_contract, bot, _gstate.dex_contract, input_quantity, swap_memo)
-
-         // // TODO: after swap: add received_asset to _gstate.right_total_quant and _gstate.right_balance
-         // // const asset& input_quantity, const asset& bot_balance_before,
-         // afterswap_action act{ get_self(), { {get_self(), "active"_n} } };
-         // act.send( bot, input_quantity, bot_balance_before );
-
+         do_trade(side,  _gstate.left_pool, _gstate.right_pool, left_price, trading_left_amount, bot, bot_group_itr->bots.size());
       } else { // right_side
          double price = 1 / left_price;
-         int64_t output_precision = _gstate.left_pool.balance.quantity.symbol.precision();
-         int64_t input_amount = (double)trading_left_amount * power10(output_precision);
+
+         int64_t input_amount = calc_trade_out(left_price, trading_left_amount, _gstate.left_pool.balance.quantity.symbol,
+                     _gstate.right_pool.balance.quantity.symbol);
+         // check(false, "side: " + side.to_string() + ", input_amount: " + std::to_string(input_amount) + ", trading_left_amount: " + std::to_string(trading_left_amount) +
+         //    ", price: " + std::to_string(price));
          do_trade(side,  _gstate.right_pool, _gstate.left_pool, price, input_amount, bot, bot_group_itr->bots.size());
       }
    }
@@ -244,20 +212,19 @@ namespace flon {
 
          asset input_quantity = asset( input_amount, input_symbol );
          CHECKC( input_quantity.amount > 0, err::PARAM_ERROR, side.to_string() + " side calculated input quantity is invalid" )
-         CHECKC( input_quantity <= input_pool.total_quantity, err::PARAM_ERROR, side.to_string() + " side calculated input quantity exceed the total quantity" )
+         CHECKC( input_quantity <= input_pool.total_quantity, err::PARAM_ERROR,
+            side.to_string() + " side calculated input quantity exceed the total quantity" +
+            ", input_quantity: " + input_quantity.to_string() + ", total_quantity: " + input_pool.total_quantity.to_string())
          ASSERT( input_pool_balance <= input_pool.total_quantity )
 
-         flon_token::accounts accounts( input_contract, bot.value );
-         asset bot_balance_before = flon_token::get_balance( input_contract, bot, input_symbol, false );
-         if ( bot_balance_before < input_quantity ) {
-            int64_t min_transfer = input_quantity.amount - bot_balance_before.amount;
+         asset bot_input_balance_before = flon_token::get_balance( input_contract, bot, input_symbol, false );
+         if ( bot_input_balance_before < input_quantity ) {
+            int64_t min_transfer = input_quantity.amount - bot_input_balance_before.amount;
             CHECKC( input_pool_balance.amount >= min_transfer, err::PARAM_ERROR,
                side.to_string() + " side balance insufficient" )
             int64_t max_balance_per_bot = input_pool.total_quantity.amount * 0.5 / bot_size;
             int64_t transfer_amount = min(max(min_transfer, max_balance_per_bot), input_pool_balance.amount);
             max_balance_per_bot = min(max_balance_per_bot, input_pool_balance.amount);
-            ASSERT( bot_balance_before.amount < std::numeric_limits<int64_t>::max() - transfer_amount );
-            bot_balance_before.amount += transfer_amount;
             // TODO: transfer out to bot， check in ontransfer
             asset transfer_quant = asset(transfer_amount, input_symbol);
             input_pool_balance -= transfer_quant;
@@ -265,13 +232,26 @@ namespace flon {
             TRANSFER(input_contract, get_self(),  bot, transfer_quant, "")
          }
 
+         asset bot_received_before = flon_token::get_balance( output_contract, bot, output_symbol, false );
+
          // input_quantity will be traded for the asset on the other side, so the following steps are required:
          //    1. Deduct it from the total amount on the current side;
          //    2. After the trade is completed, add the received asset to total amount on the another side.
          input_pool.total_quantity -= input_quantity;
 
-         int64_t min_received_amount = (double)input_quantity.amount * price * (1 - _gstate.max_slippage) * power10(output_symbol.precision());
+         double input_boost = power10(input_symbol.precision());
+         double output_boost = power10(output_symbol.precision());
+         double min_price = price * (1 - _gstate.max_slippage);
+         int64_t min_received_amount = calc_trade_out(min_price, input_quantity.amount, input_symbol, output_symbol);
          asset min_received = asset(min_received_amount, output_symbol);
+         // check(false, "side: " + side.to_string() + ", min_received: " + min_received.to_string() + ", input_quantity: " + input_quantity.to_string() +
+         //    ", price: " + std::to_string(price) + ", output_boost: " + std::to_string(output_boost) + ", input_boost: " + std::to_string(input_boost) +
+         //    ", max_slippage: " + std::to_string(_gstate.max_slippage));
+         eosio::print("bot: ", bot, "\n");
+         eosio::print("side: ", side, "\n");
+         eosio::print("price: ", price, "\n");
+         eosio::print("input_quantity: ", input_quantity, "\n");
+         eosio::print("min_received_amount: ", min_received_amount, "\n");
 
          // swap
          std::string swap_memo = "swap:" + min_received.to_string() + ":" + _gstate.trade_pair_name.to_string();
@@ -280,7 +260,7 @@ namespace flon {
          // TODO: after swap: add received_asset to _gstate.right_total_quant and _gstate.right_balance
          // const asset& input_quantity, const asset& bot_balance_before,
          afterswap_action act{ get_self(), { {get_self(), "active"_n} } };
-         act.send( bot, input_quantity, bot_balance_before );
+         act.send( bot, input_quantity, bot_received_before );
     }
 
    void tokenx_mm::on_transfer(const name& from, const name& to, const asset& quant, const string& memo) {
@@ -304,19 +284,19 @@ namespace flon {
       dex_pool_side_t* input_pool = nullptr;
       dex_pool_side_t* output_pool = nullptr;
       const name* side = nullptr;
-      if (input_quantity.symbol == _gstate.left_pool.balance.quantity.symbol) {
+      if (input_quantity.symbol == _gstate.left_pool.balance.quantity.symbol) { // left side
          input_pool = &_gstate.left_pool;
          output_pool = &_gstate.right_pool;
-         ASSERT(bot_received_before.symbol == _gstate.right_pool.balance.quantity.symbol);
          side = &LEFT_SIDE;
-      } else if (input_quantity.symbol == _gstate.right_pool.balance.quantity.symbol) {
+      } else if (input_quantity.symbol == _gstate.right_pool.balance.quantity.symbol) { // right side
          input_pool = &_gstate.right_pool;
          output_pool = &_gstate.left_pool;
-         ASSERT(bot_received_before.symbol == _gstate.left_pool.balance.quantity.symbol);
          side = &RIGHT_SIDE;
       } else {
          CHECKC( false, err::PARAM_ERROR, "unsupported input quantity symbol in afterswap" );
       }
+
+      ASSERT(bot_received_before.symbol == output_pool->balance.quantity.symbol);
 
       asset bot_balance_after = flon_token::get_balance( output_pool->balance.contract, bot, output_pool->balance.quantity.symbol, true );
       CHECKC( bot_balance_after >= bot_received_before, err::STATUS_ERROR, side->to_string() + " side bot balance after swap is less than before" )
@@ -332,5 +312,19 @@ namespace flon {
       // TODO: if bot_balance_after >= output_pool->total_quantity / bot_group_itr->bots.size()
       //          transfer_quantity = bot_balance_after - output_pool->total_quantity / 2 / bot_group_itr->bots.size()
 
+   }
+
+   void tokenx_mm::updatefund(const asset& left_pool_balance, const asset& left_pool_total,
+                     const asset& right_pool_balance, const asset& right_pool_total) {
+      require_admin_auth();
+      CHECKC( left_pool_balance.symbol == _gstate.left_pool.balance.quantity.symbol, err::PARAM_ERROR, "left pool balance symbol mismatch" )
+      CHECKC( left_pool_total.symbol == _gstate.left_pool.balance.quantity.symbol, err::PARAM_ERROR, "left pool total symbol mismatch" )
+      CHECKC( right_pool_balance.symbol == _gstate.right_pool.balance.quantity.symbol, err::PARAM_ERROR, "right pool balance symbol mismatch" )
+      CHECKC( right_pool_total.symbol == _gstate.right_pool.balance.quantity.symbol, err::PARAM_ERROR, "right pool total symbol mismatch" )
+      // TODO: check balance with actual token balance in contract
+      _gstate.left_pool.balance.quantity = left_pool_balance;
+      _gstate.left_pool.total_quantity = left_pool_total;
+      _gstate.right_pool.balance.quantity = right_pool_balance;
+      _gstate.right_pool.total_quantity = right_pool_total;
    }
 }// namespace flon

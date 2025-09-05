@@ -13,6 +13,7 @@ bot_admin="flonian"
 node_url="https://t1.flonscan.io"
 tp_code="flon.usdt"
 bot_users=("botuser11111" "botuser11112" "botuser11113")
+trade_key="FU8UEDT3816bHVG3wZyezaynxEowvbQx4aD7E6rZXte22NkQGUsu"
 
 export node_url
  # each contract name corresponds to its account
@@ -51,6 +52,8 @@ deploy_contract() {
 echo "Creating contract accounts ..."
 for a in "${contracts[@]}"; do
     create_account "$a" "$bot_admin" "10.0 FLON" "$bot_admin@active"
+    # set code auth to contract account itself
+    fucli -u "$node_url" set account permission "$a" active --add-code -p "$a@active"
 done
 #1.2 Create bot user accounts
 echo "Creating bot user accounts ..."
@@ -115,3 +118,27 @@ fucli -u "$node_url" push action "$tokenx_mm_contract" setadmin '{"admin":"'$bot
 #5.2 (optional) configure bot manager contract for tokenx.mm if needed
 echo "Configuring bot manager contract to $bot_mm_contract for tokenx.mm ..."
 fucli -u "$node_url" push action "$tokenx_mm_contract" cfgbotmgr '{"bot_mgr_contract":"'$bot_mm_contract'"}' -p "$tokenx_mm_contract@active"
+
+
+
+#6. add executing trade permission to bot_admin and link to exectrade of tokenx.mm contract
+echo "Adding executing trade permission for $bot_admin ..."
+
+#6.1 create new permission "trade" to bot_admin if not exist
+echo "Checking if 'trade' permission exists for $bot_admin ..."
+if ! fucli -u "$node_url" get account "$bot_admin" | grep -q '"perm_name": "trade"'; then
+    echo "Creating 'trade' permission for $bot_admin ..."
+    authority='{"threshold":1,"keys":[{"key":"'$trade_key'","weight":1}],"accounts":[],"waits":[]}'
+    fucli -u "$node_url" set account permission "$bot_admin" trade "$authority" active -p "$bot_admin@active"
+else
+    echo "'trade' permission already exists for $bot_admin, skipping creation."
+fi
+
+# link exectrade action to "trade" permission of bot_admin, skip if already set
+echo "Checking if exectrade action link exists for $bot_admin ..."
+if ! fucli -u "$node_url" get account "$bot_admin" | grep -q '"code": "'$tokenx_mm_contract'", "type": "exectrade", "required_permission": "trade"'; then
+    echo "Linking exectrade action to trade permission ..."
+    fucli -u "$node_url" set action permission "$bot_admin" "$tokenx_mm_contract" exectrade trade -p "$bot_admin@active"
+else
+    echo "exectrade action already linked to trade permission, skipping."
+fi
