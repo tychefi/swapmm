@@ -162,8 +162,11 @@ git clone --recurse-submodules https://github.com/tychefi/pydexbot.git
 cd pydexbot
 # build docker image
 bash build.docker.image.sh
+# [optional] create data dir
+sudo mkdir -p $data_dir; sudo chown -R $(id -u):$(id -g) $data_dir
 # setup config file
-bash setup.config.sh "$data_dir" ${trade_privkey}
+bash setup.sh "$data_dir" ${trade_privkey}
 # run pydexbot
-cd $data_dir && run.sh
+cd $data_dir
+bash run.sh
 ```
