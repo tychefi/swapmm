@@ -51,6 +51,7 @@ export dex_contract="flon.swap"
 export trade_pair="flon.usdt"
 export flon_token_contract="flon.token"
 export usdt_token_contract="flon.mtoken"
+export data_dir="/opt/data/pydexbot"
 ```
 
 ## 2. Clone Repository and Build Contracts
@@ -154,8 +155,11 @@ fucli -u "$url" push action "$tokenx_mm_contract" exectrade '["'"$memo"'"]' -p $
 
 ```bash
 # prepare env
-export data_dir="/opt/data/pydexbot"
+export url="https://m.flonscan.io"
 export trade_privkey="${YOUR_TRADE_PRIVKEY}"
+export bot_admin="flonian"
+export data_dir="/opt/data/pydexbot"
+
 cd $HOME
 # clone pydexbot repo
 git clone --recurse-submodules https://github.com/tychefi/pydexbot.git
@@ -164,8 +168,17 @@ cd pydexbot
 bash build.docker.image.sh
 # [optional] create data dir
 sudo mkdir -p $data_dir; sudo chown -R $(id -u):$(id -g) $data_dir
-# setup config file
+# setup bot docker files
 bash setup.sh "$data_dir" ${trade_privkey}
+# configure the bot settings in $data_dir/config.yaml as needed
+cat <<EOF > $data_dir/config/config.yaml
+node_url: "${url}"
+trade_privkey: "${trade_privkey}"
+bot_admin: "${bot_admin}"
+tokenx_mm_contract: "${tokenx_mm_contract}"
+min_interval_seconds: 3
+max_interval_seconds: 10
+EOF
 # run pydexbot
 cd $data_dir
 bash run.sh
