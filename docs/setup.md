@@ -159,6 +159,7 @@ export url="https://m.flonscan.io"
 export trade_privkey="${YOUR_TRADE_PRIVKEY}"
 export bot_admin="flonian"
 export data_dir="/opt/data/pydexbot"
+export tokenx_mm_contract="tokenx.mm"
 
 cd $HOME
 # clone pydexbot repo
@@ -166,12 +167,8 @@ git clone --recurse-submodules https://github.com/tychefi/pydexbot.git
 cd pydexbot
 # build docker image
 bash build.docker.image.sh
-# [optional] create data dir
-sudo mkdir -p $data_dir; sudo chown -R $(id -u):$(id -g) $data_dir
-# setup bot docker files
-bash setup.sh "$data_dir" ${trade_privkey}
-# configure the bot settings in $data_dir/config.yaml as needed
-cat <<EOF > $data_dir/config/config.yaml
+# configure the bot settings in $data_dir/.config.yaml
+cat <<EOF > $data_dir/config/.config.yaml
 node_url: "${url}"
 trade_privkey: "${trade_privkey}"
 bot_admin: "${bot_admin}"
@@ -179,6 +176,14 @@ tokenx_mm_contract: "${tokenx_mm_contract}"
 min_interval_seconds: 3
 max_interval_seconds: 10
 EOF
+# check the config file
+cat $data_dir/config/.config.yaml
+
+# [optional] create data dir
+sudo mkdir -p $data_dir; sudo chown -R $(id -u):$(id -g) $data_dir
+# setup bot docker files
+bash setup.sh "$data_dir"
+
 # run pydexbot
 cd $data_dir
 bash run.sh
