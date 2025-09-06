@@ -4,21 +4,21 @@
 
 ### Preparation Checklist
 
-| Item             | Value                | Description                                |
-| ---------------- | -------------------- | ------------------------------------------ |
-| bot_admin        | flonian              | Bot admin account, exists account          |
-| fund_account     | flonian              | Fund account, must have assets(FLON, USDT) |
-| trade_updater    | flonian              | trade updater, who can update target price |
-| trade_pubkey     | {YOUR_TRADE_PUBKEY}  | bot_trade_pubkey                           |
-| trade_privkey    | {YOUR_TRADE_PRIVKEY} | bot_trade_privkey                          |
-| target_price     | 0.1                  | target price, double type                  |
-| min_trade_amount | 10.00000000 FLON     | min trade amount, asset type               |
-| max_trade_amount | 30.00000000 FLON     | max trade amount, asset type               |
-| deposit_flon     | 5000.000000 FLON   | total flon to deposit, asset type          |
-| deposit_usdt     | 500.00000000 USDT    | total usdt to deposit, asset type          |
-| url              | flonian              | node RPC url                               |
-| dex_contract     | flon.swap            | dex contract                               |
-| trade_pair       | flon.usdt            | trade pair name                            |
+| Item             | Value                 | Description                                |
+| ---------------- | --------------------- | ------------------------------------------ |
+| bot_admin        | flonian               | Bot admin account, exists account          |
+| fund_account     | flonian               | Fund account, must have assets(FLON, USDT) |
+| trade_updater    | flonian               | trade updater, who can update target price |
+| trade_pubkey     | {YOUR_TRADE_PUBKEY}   | bot_trade_pubkey                           |
+| trade_privkey    | {YOUR_TRADE_PRIVKEY}  | bot_trade_privkey                          |
+| target_price     | 0.1                   | target price, double type                  |
+| min_trade_amount | 10.00000000 FLON      | min trade amount, asset type               |
+| max_trade_amount | 30.00000000 FLON      | max trade amount, asset type               |
+| deposit_flon     | 5000.000000 FLON      | total flon to deposit, asset type          |
+| deposit_usdt     | 500.000000 USDT       | total usdt to deposit, asset type          |
+| url              | https://m.flonscan.io | node RPC url                               |
+| dex_contract     | flon.swap             | dex contract                               |
+| trade_pair       | flon.usdt             | trade pair name                            |
 
 ### ENV
 
@@ -39,7 +39,7 @@ export bot_mm_contract="bot.mm"
 export tokenx_mm_contract="tokenx.mm"
 export trade_pair="flon.usdt"
 export bot_users=("botuser11111" "botuser11112" "botuser11113")
-export url="https://flonscan.io"
+export url="https://m.flonscan.io"
 export dex_contract="flon.swap"
 export trade_pair="flon.usdt"
 export flon_token_contract="flon.token"
