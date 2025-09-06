@@ -129,6 +129,24 @@ fucli -u $url transfer flonian botuser11111 "$deposit_usdt" "init bot fund" --co
 memo=$(od -An -N4 -tu4 /dev/urandom | tr -d ' \n')
 fucli -u "$url" push action "$tokenx_mm_contract" exectrade '{"'"$memo"'"}'
 ```
----
+
+## 12. Setup pydexbot in server
 
 
+**Login to server first, then clone pydexbot repo and setup config file**
+
+
+```bash
+# prepare env
+export data_dir="/opt/data/pydexbot"
+export privkey="${YOUR_TRADE_PRIVKEY}"
+# clone pydexbot repo
+git clone --recurse-submodules https://github.com/tychefi/pydexbot.git
+cd pydexbot
+# build docker image
+bash build.docker.image.sh
+# setup config file
+bash setup.config.sh
+# run pydexbot
+cd $data_dir && run.sh
+```
