@@ -20,6 +20,13 @@
 | dex_contract     | flon.swap             | dex contract                               |
 | trade_pair       | flon.usdt             | trade pair name                            |
 
+### Bot Running Server
+- Server: Linux, SSH login
+- Dependencies: git, Docker, Docker Compose
+- source_code_dir: $HOME/pydexbot
+- data_dir: `/opt/data/pydexbot`
+- trade_privkey: `"${YOUR_TRADE_PRIVKEY}"`
+
 ### ENV
 
 ```bash
@@ -27,8 +34,8 @@
 export bot_admin="flonian"
 export fund_account="flonian"
 export trade_updater="flonian"
-export trade_pubkey="{YOUR_TRADE_PUBKEY}"
-export trade_privkey="{YOUR_TRADE_PRIVKEY}"
+export trade_pubkey="${YOUR_TRADE_PUBKEY}"
+export trade_privkey="${YOUR_TRADE_PRIVKEY}"
 export target_price=0.1
 export min_trade_amount="10.00000000 FLON"
 export max_trade_amount="30.00000000 FLON"
@@ -148,14 +155,15 @@ fucli -u "$url" push action "$tokenx_mm_contract" exectrade '["'"$memo"'"]' -p $
 ```bash
 # prepare env
 export data_dir="/opt/data/pydexbot"
-export privkey="${YOUR_TRADE_PRIVKEY}"
+export trade_privkey="${YOUR_TRADE_PRIVKEY}"
+cd $HOME
 # clone pydexbot repo
 git clone --recurse-submodules https://github.com/tychefi/pydexbot.git
 cd pydexbot
 # build docker image
 bash build.docker.image.sh
 # setup config file
-bash setup.config.sh
+bash setup.config.sh "$data_dir" ${trade_privkey}
 # run pydexbot
 cd $data_dir && run.sh
 ```
