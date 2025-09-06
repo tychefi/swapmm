@@ -79,7 +79,7 @@ class [[eosio::contract("bot.mm")]] bot_mm : public contract {
       global_singleton    _global;
       global_t            _gstate;
 
-      void require_admin_auth() const;
+      const name& require_admin_auth() const;
 
 };
 

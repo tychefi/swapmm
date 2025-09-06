@@ -9,9 +9,14 @@ namespace flon {
 
    DEFINE_VERSION_CONTRACT_CLASS("bot.mm", bot_mm)
 
-   void bot_mm::require_admin_auth() const {
-      CHECKC(has_auth(_self) || (_gstate.admin.value != 0 && has_auth(_gstate.admin)),
-         err::NO_AUTH, "miss self or admin authorization");
+   const name& bot_mm::require_admin_auth() const {
+      if (_gstate.admin.value != 0 && has_auth(_gstate.admin)) {
+         return _gstate.admin;
+      } else if (has_auth(_self)) {
+         return _self;
+      } else {
+         CHECKC(false, err::NO_AUTH, "miss self or admin authorization");
+      }
    }
 
    void bot_mm::setadmin( const name& admin ) {
@@ -22,18 +27,18 @@ namespace flon {
 
    void bot_mm::setgroup(const name& group_name, const string& desc, const set<name>& bots ) {
 
-      require_admin_auth();
+      const auto& admin = require_admin_auth();
 
       auto groups           = bot_group_t::idx_t( get_self(), get_self().value );
       auto itr = groups.find( group_name.value );
       if ( itr == groups.end() ) {
-         groups.emplace( group_name, [&] (auto& row) {
+         groups.emplace( admin, [&] (auto& row) {
             row.group_name = group_name;
             row.desc = desc;
             row.bots   = bots;
          } );
       } else {
-         groups.modify( itr, same_payer, [&] (auto& row) {
+         groups.modify( itr, admin, [&] (auto& row) {
             row.desc = desc;
             row.bots = bots;
          } );
