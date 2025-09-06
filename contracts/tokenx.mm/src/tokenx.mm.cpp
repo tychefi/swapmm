@@ -260,7 +260,7 @@ namespace flon {
          // TODO: after swap: add received_asset to _gstate.right_total_quant and _gstate.right_balance
          // const asset& input_quantity, const asset& bot_balance_before,
          afterswap_action act{ get_self(), { {get_self(), "active"_n} } };
-         act.send( bot, input_quantity, bot_received_before );
+         act.send( bot, side, input_quantity, bot_received_before );
     }
 
    void tokenx_mm::on_transfer(const name& from, const name& to, const asset& quant, const string& memo) {
@@ -279,27 +279,28 @@ namespace flon {
       }
    }
 
-   void tokenx_mm::afterswap(const name& bot, const asset& input_quantity, const asset& bot_received_before) {
+   void tokenx_mm::afterswap(const name& bot, const name& side, const asset& input_quantity, const asset& bot_received_before) {
       require_auth(get_self());
       dex_pool_side_t* input_pool = nullptr;
       dex_pool_side_t* output_pool = nullptr;
-      const name* side = nullptr;
-      if (input_quantity.symbol == _gstate.left_pool.balance.quantity.symbol) { // left side
+      if (side != LEFT_SIDE && side != RIGHT_SIDE) {
+         CHECKC( false, err::PARAM_ERROR, "invalid side in afterswap: " + side.to_string() );
+      }
+      if (side == LEFT_SIDE) {
          input_pool = &_gstate.left_pool;
          output_pool = &_gstate.right_pool;
-         side = &LEFT_SIDE;
-      } else if (input_quantity.symbol == _gstate.right_pool.balance.quantity.symbol) { // right side
+      } else if (side == RIGHT_SIDE) {
          input_pool = &_gstate.right_pool;
          output_pool = &_gstate.left_pool;
-         side = &RIGHT_SIDE;
       } else {
          CHECKC( false, err::PARAM_ERROR, "unsupported input quantity symbol in afterswap" );
       }
 
+      ASSERT(input_quantity.symbol == input_pool->balance.quantity.symbol);
       ASSERT(bot_received_before.symbol == output_pool->balance.quantity.symbol);
 
       asset bot_balance_after = flon_token::get_balance( output_pool->balance.contract, bot, output_pool->balance.quantity.symbol, true );
-      CHECKC( bot_balance_after >= bot_received_before, err::STATUS_ERROR, side->to_string() + " side bot balance after swap is less than before" )
+      CHECKC( bot_balance_after >= bot_received_before, err::STATUS_ERROR, side.to_string() + " side bot balance after swap is less than before" )
       asset actual_received = bot_balance_after - bot_received_before;
       // The asset is still in the bot account, so the received from the swap contract is only added to the total quantity.
       output_pool->total_quantity += actual_received;

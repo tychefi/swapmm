@@ -50,7 +50,7 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
    void on_transfer(const name& from, const name& to, const asset& quant, const string& memo);
 
 
-   ACTION afterswap(const name& bot, const asset& input_quantity, const asset& bot_balance_before);
+   ACTION afterswap(const name& bot, const name& side, const asset& input_quantity, const asset& bot_received_before);
 
    ACTION updatefund(const asset& left_pool_balance, const asset& left_pool_total,
                      const asset& right_pool_balance, const asset& right_pool_total);
