@@ -68,7 +68,7 @@ namespace flon {
 
       auto markets    = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr       = markets.find( trade_market_name.value );
-      CHECKC( itr == markets.end(), err::RECORD_NOT_FOUND, "market not existed: " + trade_market_name.to_string() );
+      CHECKC( itr == markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + trade_market_name.to_string() );
       CHECKC( updater == get_self() || updater == _gstate.admin || itr->updaters.count( updater ), err::NO_AUTH, "updater no permission:" + updater.to_string() );
       CHECKC( itr->paused != paused, err::PARAM_ERROR, "market already in desired state" )
 
@@ -84,7 +84,7 @@ namespace flon {
 
       auto markets    = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr       = markets.find( trade_market_name.value );
-      CHECKC( itr == markets.end(), err::RECORD_NOT_FOUND, "market not existed: " + trade_market_name.to_string() )
+      CHECKC( itr == markets.end(), err::RECORD_NOT_FOUND, "market not exising: " + trade_market_name.to_string() )
 
       CHECKC( updater == get_self() || updater == _gstate.admin || itr->updaters.count( updater ), err::NO_AUTH, "updater no permission:" + updater.to_string() );
 
@@ -102,7 +102,7 @@ namespace flon {
 
       auto markets    = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr       = markets.find( group_name.value );
-      CHECKC( itr == markets.end(), err::RECORD_NOT_FOUND, "market not existed: " + group_name.to_string() )
+      CHECKC( itr == markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + group_name.to_string() )
 
       markets.modify( itr, same_payer, [&] (auto& row) {
          row.updaters            = updaters;
@@ -115,7 +115,7 @@ namespace flon {
 
       auto markets    = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr       = markets.find( trade_market_name.value );
-      CHECKC( itr == markets.end(), err::RECORD_NOT_FOUND, "market not existed: " + trade_market_name.to_string() )
+      CHECKC( itr == markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + trade_market_name.to_string() )
 
       markets.erase( itr );
    }
