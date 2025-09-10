@@ -114,7 +114,7 @@ namespace flon {
       return (double)input_amount * price * out_boost / in_boost;
    }
 
-   void tokenx_mm::exectrade( const string& memo ) {
+   void tokenx_mm::trade( const string& memo ) {
       require_admin_auth();
 
       // contract name: buylowsellhi = 4520798682350377696

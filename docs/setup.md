@@ -127,9 +127,9 @@ fucli -u $url push action $tokenx_mm_contract cfgbotmgr '["'$bot_mm_contract'"]'
 authority='{"threshold":1,"keys":[{"key":"'"$trade_pubkey"'","weight":1}],"accounts":[],"waits":[]}'
 fucli -u $url set account permission $bot_admin trade "$authority" active -p $bot_admin@active
 ```
-## 9. Link trade Permission of bot_admin to `exectrade` Action of `tokenx.mm`
+## 9. Link trade Permission of bot_admin to `trade` Action of `tokenx.mm`
 ```bash
-fucli -u $url set action permission $bot_admin $tokenx_mm_contract exectrade trade -p $bot_admin@active
+fucli -u $url set action permission $bot_admin $tokenx_mm_contract trade trade -p $bot_admin@active
 ```
 
 
@@ -144,7 +144,7 @@ fucli -u $url transfer $fund_account $tokenx_mm_contract "$deposit_usdt" "init b
 ```bash
 fucli -u "$url" get table  $tokenx_mm_contract  $tokenx_mm_contract global
 memo=$(od -An -N4 -tu4 /dev/urandom | tr -d ' \n')
-fucli -u "$url" push action "$tokenx_mm_contract" exectrade '["'"$memo"'"]' -p $bot_admin@trade
+fucli -u "$url" push action "$tokenx_mm_contract" trade '["'"$memo"'"]' -p $bot_admin@trade
 ```
 
 ## 12. Setup pydexbot in server

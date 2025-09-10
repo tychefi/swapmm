@@ -1,5 +1,5 @@
 #!/bin/bash
-# run.bot.sh - Automatically loop to call tokenx.mm contract exectrade, and record trade details
+# run.bot.sh - Automatically loop to call tokenx.mm contract trade, and record trade details
 # set -e
 # Configurations
 tokenx_mm_contract="tokenxmm1111"
@@ -23,12 +23,12 @@ while true; do
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     # random nonce
     memo=$RANDOM
-    result=$(fucli -u "$node_url" push action "$tokenx_mm_contract" exectrade '{"memo":"'$memo'"}' -p "$tokenx_mm_contract@active")
-    [ $? -ne 0 ] && log "ERROR: exectrade failed and wait for 3 seconds for another try" && sleep 3 && continue
+    result=$(fucli -u "$node_url" push action "$tokenx_mm_contract" trade '{"memo":"'$memo'"}' -p "$tokenx_mm_contract@active")
+    [ $? -ne 0 ] && log "ERROR: trade failed and wait for 3 seconds for another try" && sleep 3 && continue
 
     # Record log
     echo "-----------------------------"
-    log "exectrade status: $status"
+    log "trade status: $status"
     log "$result"
     sleep_time=$(( RANDOM % (interval_max - interval_min + 1) + interval_min ))
     log "wait for: ${sleep_time}s"

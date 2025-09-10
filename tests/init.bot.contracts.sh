@@ -121,7 +121,7 @@ fucli -u "$node_url" push action "$tokenx_mm_contract" cfgbotmgr '{"bot_mgr_cont
 
 
 
-#6. add executing trade permission to bot_admin and link to exectrade of tokenx.mm contract
+#6. add executing trade permission to bot_admin and link to trade of tokenx.mm contract
 echo "Adding executing trade permission for $bot_admin ..."
 
 #6.1 create new permission "trade" to bot_admin if not exist
@@ -134,11 +134,11 @@ else
     echo "'trade' permission already exists for $bot_admin, skipping creation."
 fi
 
-# link exectrade action to "trade" permission of bot_admin, skip if already set
-echo "Checking if exectrade action link exists for $bot_admin ..."
-if ! fucli -u "$node_url" get account "$bot_admin" | grep -q '"code": "'$tokenx_mm_contract'", "type": "exectrade", "required_permission": "trade"'; then
-    echo "Linking exectrade action to trade permission ..."
-    fucli -u "$node_url" set action permission "$bot_admin" "$tokenx_mm_contract" exectrade trade -p "$bot_admin@active"
+# link trade action to "trade" permission of bot_admin, skip if already set
+echo "Checking if trade action link exists for $bot_admin ..."
+if ! fucli -u "$node_url" get account "$bot_admin" | grep -q '"code": "'$tokenx_mm_contract'", "type": "trade", "required_permission": "trade"'; then
+    echo "Linking trade action to trade permission ..."
+    fucli -u "$node_url" set action permission "$bot_admin" "$tokenx_mm_contract" trade trade -p "$bot_admin@active"
 else
-    echo "exectrade action already linked to trade permission, skipping."
+    echo "trade action already linked to trade permission, skipping."
 fi

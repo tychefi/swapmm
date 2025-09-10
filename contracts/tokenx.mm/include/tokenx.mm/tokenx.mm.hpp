@@ -44,7 +44,7 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
     ACTION cfgbotmgr( const name& bot_mgr_contract );
 
 
-   ACTION exectrade( const string& memo );
+   ACTION trade( const string& memo );
 
    [[eosio::on_notify("*::transfer")]]
    void on_transfer(const name& from, const name& to, const asset& quant, const string& memo);
