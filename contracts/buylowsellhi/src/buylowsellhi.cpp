@@ -64,7 +64,7 @@ namespace flon {
    }
 
    void buylowsellhi::setpause( const name& updater, const name& trade_market_name, bool paused ) {
-      require_admin_auth();
+      require_auth( updater );
 
       auto markets   = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr       = markets.find( trade_market_name.value );
