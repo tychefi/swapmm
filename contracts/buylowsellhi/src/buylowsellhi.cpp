@@ -36,6 +36,9 @@ namespace flon {
 
       auto auth_admin = require_admin_auth();
 
+      CHECKC( min_trade_amount.symbol == max_trade_amount.symbol, err::PARAM_ERROR, "min and max trade amount symbol mismatch" )
+      CHECKC( min_trade_amount.amount <= max_trade_amount.amount, err::PARAM_ERROR, "min trade amount can not be greater than max trade amount" )
+
       auto markets = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr = markets.find( trade_market_name.value );
       if ( itr == markets.end() ) {
@@ -84,7 +87,7 @@ namespace flon {
 
       auto markets   = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr       = markets.find( trade_market_name.value );
-      CHECKC( itr    != markets.end(), err::RECORD_NOT_FOUND, "market not exising: " + trade_market_name.to_string() )
+      CHECKC( itr    != markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + trade_market_name.to_string() )
 
       CHECKC( updater == get_self() || updater == _gstate.admin || itr->updaters.count( updater ), err::NO_AUTH, "updater no permission:" + updater.to_string() );
 
@@ -96,6 +99,27 @@ namespace flon {
       } );
    }
 
+   void buylowsellhi::setamount( const name& updater, const name& trade_market_name, const asset& min_trade_amount, const asset& max_trade_amount ) {
+      require_auth( updater );
+
+      auto markets   = trade_market_t::idx_t( get_self(), get_self().value );
+      auto itr       = markets.find( trade_market_name.value );
+      CHECKC( itr    != markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + trade_market_name.to_string() )
+
+      CHECKC( updater == get_self() || updater == _gstate.admin || itr->updaters.count( updater ), err::NO_AUTH, "updater no permission:" + updater.to_string() );
+
+      CHECKC( min_trade_amount.symbol == max_trade_amount.symbol, err::PARAM_ERROR, "min and max trade amount symbol mismatch" )
+      CHECKC( min_trade_amount.amount <= max_trade_amount.amount, err::PARAM_ERROR, "min trade amount can not be greater than max trade amount" )
+      if (itr->min_trade_amount == min_trade_amount && itr->max_trade_amount == max_trade_amount) {
+         CHECKC( false, err::PARAM_ERROR, "no data change" )
+      }
+
+      markets.modify( itr, same_payer, [&] (auto& row) {
+         row.min_trade_amount    = min_trade_amount;
+         row.max_trade_amount    = max_trade_amount;
+         row.updated_at          = current_time_point();
+      } );
+   }
 
    void buylowsellhi::setupdaters( const name group_name, const set<name>& updaters ) {
       require_admin_auth();
