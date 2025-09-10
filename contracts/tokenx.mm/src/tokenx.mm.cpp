@@ -131,6 +131,8 @@ namespace flon {
       CHECKC( market_itr->min_trade_amount.amount > 0,
          err::STATUS_ERROR, "invalid market min trade amount" )
 
+      CHECKC( !market_itr->paused, err::STATUS_ERROR, "market is paused: " + _gstate.trade_pair_name.to_string() )
+
       auto bot_groups = bot_group_t::idx_t( _gstate.bot_mgr_contract, _gstate.bot_mgr_contract.value );
       auto bot_group_itr = bot_groups.find(_gstate.bot_group_name.value);
       CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + _gstate.bot_group_name.to_string() )
