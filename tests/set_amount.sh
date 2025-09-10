@@ -6,12 +6,13 @@
 TRADING_PAIR=${1:-flon.usdt}
 BUYLOWSELLHI_CONTRACT=${2:-"buylowsellhi"}
 UPDATER=${3:-"botuser11111"}
-NODE_URL="http://hk-t3.vm.nestar.vip:18888"
+NODE_URL="http://t.flonscan.io"
 
 # Query markets table for the token pair
 # sym_pair_id=$(fucli -u $NODE_URL convert encode_name "$TRADING_PAIR")
 
 fucli -u $NODE_URL get table $BUYLOWSELLHI_CONTRACT $BUYLOWSELLHI_CONTRACT trademarkets -l 1 -L $TRADING_PAIR -U $TRADING_PAIR
 
-paused=true
-fucli -u $NODE_URL push action $BUYLOWSELLHI_CONTRACT pause '["'$UPDATER'", "'$TRADING_PAIR'", '$paused']' -p $UPDATER@active
+min_trade_amount="1.00000000 FLON"
+max_trade_amount="300.00000000 FLON"
+fucli -u $NODE_URL push action $BUYLOWSELLHI_CONTRACT setamount '["'$UPDATER'", "'$TRADING_PAIR'", "'"$min_trade_amount"'", "'"$max_trade_amount"'"]' -p $UPDATER@active
