@@ -20,13 +20,6 @@
 | dex_contract     | flon.swap             | dex contract                               |
 | trade_pair       | flon.usdt             | trade pair name                            |
 
-### Bot Running Server
-- Server: Linux, SSH login
-- Dependencies: git, Docker, Docker Compose
-- source_code_dir: $HOME/pydexbot
-- data_dir: `/opt/data/pydexbot`
-- trade_privkey: `"${YOUR_TRADE_PRIVKEY}"`
-
 ### ENV
 
 ```bash
@@ -51,7 +44,6 @@ export dex_contract="flon.swap"
 export trade_pair="flon.usdt"
 export flon_token_contract="flon.token"
 export usdt_token_contract="flon.mtoken"
-export data_dir="/opt/data/pydexbot"
 ```
 
 ## 2. Clone Repository and Build Contracts
@@ -62,7 +54,7 @@ cd swapmm
 bash build.sh
 ```
 
-**重要提示：请确保工作目录在`swapmm`目录下，否则后续脚本和命令可能无法正确执行。**
+**Important: Please make sure your working directory is `swapmm`, otherwise subsequent scripts and commands may not work correctly.**
 
 ## 2. Create Accounts**
 ### Create Contract Accounts
@@ -147,49 +139,5 @@ memo=$(od -An -N4 -tu4 /dev/urandom | tr -d ' \n')
 fucli -u "$url" push action "$tokenx_mm_contract" trade '["'"$memo"'"]' -p $bot_admin@trade
 ```
 
-## 12. Setup pydexbot in server
-
-
-**Login to server first, then clone pydexbot repo and setup config file**
-
-
-```bash
-# prepare env
-export url="https://m.flonscan.io"
-export trade_privkey="${YOUR_TRADE_PRIVKEY}"
-export bot_admin="flonian"
-export data_dir="/opt/data/pydexbot"
-export tokenx_mm_contract="tokenx.mm"
-export buylowsellhi_contract="buylowsellhi"
-export trade_pair="flon.usdt"
-
-cd $HOME
-# clone pydexbot repo
-git clone --recurse-submodules https://github.com/tychefi/pydexbot.git
-cd pydexbot
-# build docker image
-bash build.docker.image.sh
-# configure the bot settings in $data_dir/.config.yaml
-cat <<EOF > config/.config.yaml
-node_url: "${url}"
-trade_privkey: "${trade_privkey}"
-bot_admin: "${bot_admin}"
-tokenx_mm_contract: "${tokenx_mm_contract}"
-buylowsellhi_contract: "${buylowsellhi_contract}"
-trade_pair: "${trade_pair}"
-min_interval_seconds: 3
-max_interval_seconds: 10
-EOF
-
-# [optional] create data dir
-sudo mkdir -p $data_dir; sudo chown -R $(id -u):$(id -g) $data_dir
-# setup bot docker files
-bash setup.sh "$data_dir"
-
-# check the config file
-cat $data_dir/config/config.yaml
-
-# run pydexbot
-cd $data_dir
-bash run.sh
-```
+## Setup Complete
+If you need to run the bot, please refer to the [Bot Setup Guide](https://github.com/tychefi/pydexbot/blob/main/docs/setup.pydexbot.md)
