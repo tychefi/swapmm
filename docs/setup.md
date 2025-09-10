@@ -160,6 +160,8 @@ export trade_privkey="${YOUR_TRADE_PRIVKEY}"
 export bot_admin="flonian"
 export data_dir="/opt/data/pydexbot"
 export tokenx_mm_contract="tokenx.mm"
+export buylowsellhi_contract="buylowsellhi"
+export trade_pair="flon.usdt"
 
 cd $HOME
 # clone pydexbot repo
@@ -168,21 +170,24 @@ cd pydexbot
 # build docker image
 bash build.docker.image.sh
 # configure the bot settings in $data_dir/.config.yaml
-cat <<EOF > $data_dir/config/.config.yaml
+cat <<EOF > config/.config.yaml
 node_url: "${url}"
 trade_privkey: "${trade_privkey}"
 bot_admin: "${bot_admin}"
 tokenx_mm_contract: "${tokenx_mm_contract}"
+buylowsellhi_contract: "${buylowsellhi_contract}"
+trade_pair: "${trade_pair}"
 min_interval_seconds: 3
 max_interval_seconds: 10
 EOF
-# check the config file
-cat $data_dir/config/.config.yaml
 
 # [optional] create data dir
 sudo mkdir -p $data_dir; sudo chown -R $(id -u):$(id -g) $data_dir
 # setup bot docker files
 bash setup.sh "$data_dir"
+
+# check the config file
+cat $data_dir/config/config.yaml
 
 # run pydexbot
 cd $data_dir

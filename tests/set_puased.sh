@@ -13,7 +13,8 @@ NODE_URL="http://hk-t3.vm.nestar.vip:18888"
 
 fucli -u $NODE_URL get table $BUYLOWSELLHI_CONTRACT $BUYLOWSELLHI_CONTRACT trademarkets -l 1 -L $TRADING_PAIR -U $TRADING_PAIR
 
-fucli -u $NODE_URL push action $BUYLOWSELLHI_CONTRACT setpause '["'$UPDATER'", "'$TRADING_PAIR'", true]' -p $UPDATER@active
+paused=true
+fucli -u $NODE_URL push action $BUYLOWSELLHI_CONTRACT setpause '["'$UPDATER'", "'$TRADING_PAIR'", '$paused']' -p $UPDATER@active
 
 # check rows size > 0
 rows_count=$(echo "$resp" | jq '.rows | length')
