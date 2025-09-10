@@ -70,7 +70,7 @@ class [[eosio::contract("buylowsellhi")]] buylowsellhi : public contract {
     * @param trade_market_name The name of the trade market.
     * @param paused Whether the market should be paused.
     */
-   ACTION setpause( const name& updater, const name& trade_market_name, bool paused );
+   ACTION pause( const name& updater, const name& trade_market_name, bool paused );
 
    /**
     * @brief Set the target price of a trade market.

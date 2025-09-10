@@ -63,7 +63,7 @@ namespace flon {
       }
    }
 
-   void buylowsellhi::setpause( const name& updater, const name& trade_market_name, bool paused ) {
+   void buylowsellhi::pause( const name& updater, const name& trade_market_name, bool paused ) {
       require_auth( updater );
 
       auto markets   = trade_market_t::idx_t( get_self(), get_self().value );

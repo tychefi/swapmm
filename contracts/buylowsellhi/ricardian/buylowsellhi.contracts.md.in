@@ -6,7 +6,7 @@ title: Create or Update Trade Market
 summary: Create or update a trade market with specified parameters and updaters.
 ---
 
-<h1 class="contract">setpause</h1>
+<h1 class="contract">pause</h1>
 
 ---
 spec_version: "0.2.0"
