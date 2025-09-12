@@ -44,6 +44,8 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
     ACTION cfgbotmgr( const name& bot_mgr_contract );
 
 
+    ACTION setmarket( name trade_pair_name, name fund_account, name bot_group_name );
+
    ACTION trade( const string& memo );
 
    [[eosio::on_notify("*::transfer")]]
@@ -62,7 +64,7 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
       global_t            _gstate;
 
    private:
-      void require_admin_auth() const;
+      const name& require_admin_auth() const;
       void check_paused() const;
 void do_trade(const name& side, dex_pool_side_t& input_pool, dex_pool_side_t& output_pool, double price, int64_t input_amount, const name& bot, size_t bot_size);
 

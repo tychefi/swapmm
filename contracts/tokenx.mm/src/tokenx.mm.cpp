@@ -84,9 +84,14 @@ namespace flon {
       return v;
    }
 
-   void tokenx_mm::require_admin_auth() const {
-      CHECKC(has_auth(_self) || (_gstate.admin.value != 0 && has_auth(_gstate.admin)),
-         err::NO_AUTH, "miss self or admin authorization");
+   const name& tokenx_mm::require_admin_auth() const {
+      if (_gstate.admin.value != 0 && has_auth(_gstate.admin)) {
+         return _gstate.admin;
+      } else if (has_auth(_self)) {
+         return _self;
+      } else {
+         CHECKC(false, err::NO_AUTH, "miss self or admin authorization");
+      }
    }
 
    void tokenx_mm::setadmin( const name& admin ) {
@@ -112,6 +117,43 @@ namespace flon {
       int64_t in_boost = power10(input_symbol.precision());
       int64_t out_boost = power10(output_symbol.precision());
       return (double)input_amount * price * out_boost / in_boost;
+   }
+
+   void tokenx_mm::setmarket( name trade_pair_name, name fund_account, name bot_group_name ) {
+      auto admin = require_admin_auth();
+
+      CHECKC( trade_pair_name.value != 0, err::PARAM_ERROR, "invalid trade pair name" )
+      CHECKC( is_account(fund_account), err::PARAM_ERROR, "fund account not existed" )
+      CHECKC( bot_group_name.value != 0, err::PARAM_ERROR, "invalid bot group name" )
+
+      auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
+      auto bot_market_itr = bot_markets.find(trade_pair_name.value);
+      if (bot_market_itr == bot_markets.end()) {
+         auto swap_markets = swap_market_t::idx_t( _gstate.dex_contract, _gstate.dex_contract.value );
+         auto swap_market_itr = swap_markets.find( _gstate.trade_pair_name.value );
+         CHECKC( swap_market_itr != swap_markets.end(), err::RECORD_NOT_FOUND, "swap market not existed: " + _gstate.trade_pair_name.to_string() )
+
+         const auto& left_contract = swap_market_itr->left_pool_quant.contract;
+         const auto& left_symbol = swap_market_itr->left_pool_quant.quantity.symbol;
+         const auto& right_contract = swap_market_itr->right_pool_quant.contract;
+         const auto& right_symbol = swap_market_itr->right_pool_quant.quantity.symbol;
+
+         bot_markets.emplace( admin, [&] (auto& row) {
+            row.trade_pair_name              = trade_pair_name;
+            row.fund_account                 = fund_account;
+            row.bot_group_name               = bot_group_name;
+            row.left_pool.balance            = extended_asset(asset(0, left_symbol), left_contract);
+            row.left_pool.total_quantity     = asset(0, left_symbol);
+            row.right_pool.balance           = extended_asset(asset(0, right_symbol), right_contract);
+            row.right_pool.total_quantity    = asset(0, right_symbol);
+            // other fields use default values
+         } );
+      } else {
+         bot_markets.modify( bot_market_itr, admin, [&] (auto& row) {
+            row.fund_account        = fund_account;
+            row.bot_group_name      = bot_group_name;
+         } );
+      }
    }
 
    void tokenx_mm::trade( const string& memo ) {

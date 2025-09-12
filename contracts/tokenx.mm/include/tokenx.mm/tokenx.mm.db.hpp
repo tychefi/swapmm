@@ -77,4 +77,26 @@ NTBL("global") global_t {
 };
 typedef eosio::singleton< "global"_n, global_t > global_singleton;
 
+NTBL("botmarkets") bot_market_t {
+    name            trade_pair_name;                // Market name
+    name            fund_account;                   // bot manager contract name
+    name            bot_group_name;                 // Bot group name for managing trading bots
+    dex_pool_side_t left_pool;                      // Left side pool info
+    dex_pool_side_t right_pool;                     // Right side pool info
+    double          max_slippage          = 0.1;    // Maximum allowed slippage (default: 10%)
+    double          fluctuation_ratio     = 0.1;    // Price fluctuation ratio for sideways market (default: 10%)
+    uint32_t        min_trade_seconds     = 10;     // Minimum interval between trades in seconds (default: 10)
+    uint32_t        max_trade_seconds     = 30;     // Maximum interval between trades in seconds (default: 30)
+
+
+    uint64_t primary_key() const { return trade_pair_name.value; }
+
+    typedef eosio::multi_index< "botmarkets"_n,  bot_market_t> idx_t;
+
+    EOSLIB_SERIALIZE( bot_market_t, (trade_pair_name)(fund_account)(bot_group_name)
+                                (left_pool)(right_pool)(max_slippage)(fluctuation_ratio)(min_trade_seconds)
+                                (max_trade_seconds))
+};
+
+
 } //namespace flon
