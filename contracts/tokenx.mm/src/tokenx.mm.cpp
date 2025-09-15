@@ -239,8 +239,7 @@ namespace flon {
             //    ", price: " + std::to_string(price));
             do_trade(side, row, row.right_pool, row.left_pool, price, input_amount, bot, bot_group_itr->bots.size());
          }
-         // row.last_trade_time = current_time_point();
-         // row.last_trade_side = side;
+         row.last_traded_at = current_time_point();
       } );
 
    }
