@@ -56,6 +56,7 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
 
    ACTION updatefund(const name& trade_pair_name, const asset& left_pool_balance, const asset& left_pool_total,
                      const asset& right_pool_balance, const asset& right_pool_total);
+   ACTION withdraw(const name& trade_pair_name, const extended_asset& quantity);
 
    using afterswap_action = eosio::action_wrapper<"afterswap"_n, &tokenx_mm::afterswap>;
 

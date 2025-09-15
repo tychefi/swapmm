@@ -401,4 +401,30 @@ namespace flon {
       } );
       // TODO: check balance with actual token balance in contract
    }
+
+   void tokenx_mm::withdraw(const name& trade_pair_name, const extended_asset& quantity) {
+      auto admin = require_admin_auth();
+
+      auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
+      auto bot_market_itr = bot_markets.find(trade_pair_name.value);
+      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+      bot_markets.modify( bot_market_itr, same_payer, [&] (auto& row) {
+         if (quantity.contract == row.left_pool.balance.contract && quantity.quantity.symbol == row.left_pool.balance.quantity.symbol) {
+            CHECKC( quantity.quantity <= row.left_pool.balance.quantity, err::PARAM_ERROR,
+               "withdraw quantity exceed left pool balance" )
+            ASSERT( row.left_pool.balance.quantity <= row.left_pool.total_quantity )
+            row.left_pool.balance.quantity -= quantity.quantity;
+            row.left_pool.total_quantity -= quantity.quantity;
+         } else if (quantity.contract == row.right_pool.balance.contract && quantity.quantity.symbol == row.right_pool.balance.quantity.symbol) {
+            CHECKC( quantity.quantity <= row.right_pool.balance.quantity, err::PARAM_ERROR,
+               "withdraw quantity exceed right pool balance" )
+            ASSERT( row.right_pool.balance.quantity <= row.right_pool.total_quantity )
+            row.right_pool.balance.quantity -= quantity.quantity;
+            row.right_pool.total_quantity -= quantity.quantity;
+         } else {
+            CHECKC( false, err::PARAM_ERROR, "token contract or symbol not match any side of the bot market" )
+         }
+      } );
+   }
+
 }// namespace flon
