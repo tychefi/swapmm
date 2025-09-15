@@ -320,7 +320,7 @@ namespace flon {
       if (memo_params.size() < 1) {
          return;
       }
-      if (memo_params[0] != "addfund") {
+      if (memo_params[0] != "deposit") {
          return;
       }
       CHECKC( memo_params.size() == 2, err::PARAM_ERROR, "invalid memo format" )
@@ -336,9 +336,11 @@ namespace flon {
          } else if (token_contract == row.right_pool.balance.contract && quant.symbol == row.right_pool.balance.quantity.symbol) {
             row.right_pool.balance.quantity += quant;
             row.right_pool.total_quantity += quant;
+         } else {
+            CHECKC( false, err::PARAM_ERROR, "token contract or symbol not match any side of the bot market" )
          }
       } );
-
+      TRANSFER_OUT(token_contract, bot_market_itr->fund_account, quant, "to bot fund")
    }
 
    void tokenx_mm::afterswap(const name& bot, const name& trade_pair_name, const name& side, const asset& input_quantity, const asset& bot_received_before) {
