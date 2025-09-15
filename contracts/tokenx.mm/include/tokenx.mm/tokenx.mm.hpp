@@ -44,17 +44,17 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
     ACTION cfgbotmgr( const name& bot_mgr_contract );
 
 
-    ACTION setmarket( name trade_pair_name, name fund_account, name bot_group_name );
+    ACTION setmarket( const name& trade_pair_name, const name& fund_account, const name& bot_group_name );
 
-   ACTION trade( const string& memo );
+   ACTION trade( const name& bot, const name& trade_pair_name, const string& memo );
 
    [[eosio::on_notify("*::transfer")]]
    void on_transfer(const name& from, const name& to, const asset& quant, const string& memo);
 
 
-   ACTION afterswap(const name& bot, const name& side, const asset& input_quantity, const asset& bot_received_before);
+   ACTION afterswap(const name& bot, const name& trade_pair_name, const name& side, const asset& input_quantity, const asset& bot_received_before);
 
-   ACTION updatefund(const asset& left_pool_balance, const asset& left_pool_total,
+   ACTION updatefund(const name& trade_pair_name, const asset& left_pool_balance, const asset& left_pool_total,
                      const asset& right_pool_balance, const asset& right_pool_total);
 
    using afterswap_action = eosio::action_wrapper<"afterswap"_n, &tokenx_mm::afterswap>;
@@ -66,7 +66,7 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
    private:
       const name& require_admin_auth() const;
       void check_paused() const;
-void do_trade(const name& side, dex_pool_side_t& input_pool, dex_pool_side_t& output_pool, double price, int64_t input_amount, const name& bot, size_t bot_size);
+void do_trade(const name& side, const bot_market_t& bot_market, dex_pool_side_t& input_pool, dex_pool_side_t& output_pool, double price, int64_t input_amount, const name& bot, size_t bot_size);
 
 };
 
