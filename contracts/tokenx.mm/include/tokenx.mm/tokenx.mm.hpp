@@ -67,7 +67,7 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
    private:
       const name& require_admin_auth() const;
       void check_paused() const;
-void do_trade(const name& side, const bot_market_t& bot_market, dex_pool_side_t& input_pool, dex_pool_side_t& output_pool, double price, int64_t input_amount, const name& bot, size_t bot_size);
+      void do_trade(const name& side, const bot_market_t& bot_market, dex_pool_side_t& input_pool, dex_pool_side_t& output_pool, double min_price, int64_t input_amount, const name& bot, size_t bot_size);
 
 };
 

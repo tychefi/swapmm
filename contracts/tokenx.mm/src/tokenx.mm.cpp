@@ -20,10 +20,19 @@ namespace flon {
       asset           min_trade_amount;            // Minimum amount allowed in each trade, it must be left side
       asset           max_trade_amount;            // Maximum amount allowed in each trade, it must be left side
       string          memo;
+      set<name>       updaters;
+      double          max_slippage            = 0.1;   // Maximum allowed slippage (default: 10%)
+      double          fluctuation_ratio       = 0.1;   // Price fluctuation ratio for sideways market (default: 10%)
+      uint32_t        min_trade_seconds       = 10;    // Minimum interval between trades in seconds (default: 10)
+      uint32_t        max_trade_seconds       = 30;    // Maximum interval between trades in seconds (default: 30)
 
-    uint64_t primary_key()const { return trade_market_name.value; }
+      uint64_t primary_key()const { return trade_market_name.value; }
 
-    typedef eosio::multi_index< "trademarkets"_n,  trade_market_t> idx_t;
+      typedef eosio::multi_index< "trademarkets"_n,  trade_market_t> idx_t;
+
+      EOSLIB_SERIALIZE( trade_market_t, (trade_market_name)(paused)(target_price)(min_trade_amount)
+                                        (max_trade_amount)(memo)(updaters)(max_slippage)(fluctuation_ratio)
+                                        (min_trade_seconds)(max_trade_seconds) )
    };
 
    // scope: bots contract
@@ -130,8 +139,8 @@ namespace flon {
       auto bot_market_itr = bot_markets.find(trade_pair_name.value);
       if (bot_market_itr == bot_markets.end()) {
          auto swap_markets = swap_market_t::idx_t( _gstate.dex_contract, _gstate.dex_contract.value );
-         auto swap_market_itr = swap_markets.find( _gstate.trade_pair_name.value );
-         CHECKC( swap_market_itr != swap_markets.end(), err::RECORD_NOT_FOUND, "swap market not existed: " + _gstate.trade_pair_name.to_string() )
+         auto swap_market_itr = swap_markets.find( trade_pair_name.value );
+         CHECKC( swap_market_itr != swap_markets.end(), err::RECORD_NOT_FOUND, "swap market not existed: " + trade_pair_name.to_string() )
 
          const auto& left_contract = swap_market_itr->left_pool_quant.contract;
          const auto& left_symbol = swap_market_itr->left_pool_quant.quantity.symbol;
@@ -176,6 +185,8 @@ namespace flon {
          err::STATUS_ERROR, "min trade amount can not less than max trade amount" )
       CHECKC( market_itr->min_trade_amount.amount > 0,
          err::STATUS_ERROR, "invalid market min trade amount" )
+      CHECKC( market_itr->max_slippage >= 0 && market_itr->max_slippage < 1,
+         err::STATUS_ERROR, "invalid market max slippage" )
 
       CHECKC( !market_itr->paused, err::STATUS_ERROR, "market is paused: " + bot_market_itr->trade_pair_name.to_string() )
 
@@ -209,9 +220,9 @@ namespace flon {
 
       // rand_num
       // auto chain_modeget_chain_mode()
-      CHECKC( bot_market_itr->fluctuation_ratio >= 0 && bot_market_itr->fluctuation_ratio <= 1, err::PARAM_ERROR, "invalid fluctuation ratio" )
-      double min_sideways_price = market_itr->target_price * (1 - bot_market_itr->fluctuation_ratio );
-      double max_sideways_price = market_itr->target_price * (1 + bot_market_itr->fluctuation_ratio );
+      CHECKC( market_itr->fluctuation_ratio >= 0 && market_itr->fluctuation_ratio <= 1, err::PARAM_ERROR, "invalid fluctuation ratio" )
+      double min_sideways_price = market_itr->target_price * (1 - market_itr->fluctuation_ratio );
+      double max_sideways_price = market_itr->target_price * (1 + market_itr->fluctuation_ratio );
       constexpr double left_ratio_upward     = 0.9; // 90% chance to buy when price is low
       constexpr double left_ratio_downward   = 0.1; // 10% chance to sell when price is high
       constexpr double left_ratio_sideways   = 0.5; // 50% chance to hold when price is stable
@@ -229,15 +240,18 @@ namespace flon {
 
       bot_markets.modify( bot_market_itr, same_payer, [&] (auto& row) {
          if ( is_left_side ) {
-            do_trade(side, row, row.left_pool, row.right_pool, left_price, trading_left_amount, bot, bot_group_itr->bots.size());
+
+            double min_price = left_price * (1 - market_itr->max_slippage);
+            do_trade(side, row, row.left_pool, row.right_pool, min_price, trading_left_amount, bot, bot_group_itr->bots.size());
          } else { // right_side
             double price = 1 / left_price;
 
             int64_t input_amount = calc_trade_out(left_price, trading_left_amount, row.left_pool.balance.quantity.symbol,
                         row.right_pool.balance.quantity.symbol);
+            double min_price = price * (1 - market_itr->max_slippage);
             // check(false, "side: " + side.to_string() + ", input_amount: " + std::to_string(input_amount) + ", trading_left_amount: " + std::to_string(trading_left_amount) +
             //    ", price: " + std::to_string(price));
-            do_trade(side, row, row.right_pool, row.left_pool, price, input_amount, bot, bot_group_itr->bots.size());
+            do_trade(side, row, row.right_pool, row.left_pool, min_price, input_amount, bot, bot_group_itr->bots.size());
          }
          row.last_traded_at = current_time_point();
       } );
@@ -246,7 +260,7 @@ namespace flon {
 
 
     void tokenx_mm::do_trade(const name& side, const bot_market_t& bot_market, dex_pool_side_t& input_pool, dex_pool_side_t& output_pool,
-                             double price, int64_t input_amount, const name& bot, size_t bot_size) {
+                             double min_price, int64_t input_amount, const name& bot, size_t bot_size) {
 
          const auto& input_contract = input_pool.balance.contract;
          const auto& input_symbol = input_pool.balance.quantity.symbol;
@@ -284,9 +298,6 @@ namespace flon {
          //    2. After the trade is completed, add the received asset to total amount on the another side.
          input_pool.total_quantity -= input_quantity;
 
-         double input_boost = power10(input_symbol.precision());
-         double output_boost = power10(output_symbol.precision());
-         double min_price = price * (1 - bot_market.max_slippage);
          int64_t min_received_amount = calc_trade_out(min_price, input_quantity.amount, input_symbol, output_symbol);
          asset min_received = asset(min_received_amount, output_symbol);
          // check(false, "side: " + side.to_string() + ", min_received: " + min_received.to_string() + ", input_quantity: " + input_quantity.to_string() +
