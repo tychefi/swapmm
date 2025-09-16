@@ -32,12 +32,16 @@ typedef eosio::singleton< "global"_n, global_t > global_singleton;
 
 TBL trade_market_t {
     name            trade_market_name;              // trading market name, PK
-    bool            paused              = true;     // is this market paused
-    double          target_price        = 0.0;      // target price
+    bool            paused                  = true; // is this market paused
+    double          target_price            = 0.0;  // target price
     asset           min_trade_amount;               // Minimum amount allowed in each trade, it must be left side
     asset           max_trade_amount;               // Maximum amount allowed in each trade, it must be left side
     string          memo;
     set<name>       updaters;
+    double          max_slippage            = 0.1;   // Maximum allowed slippage (default: 10%)
+    double          fluctuation_ratio       = 0.1;   // Price fluctuation ratio for sideways market (default: 10%)
+    uint32_t        min_trade_seconds       = 10;    // Minimum interval between trades in seconds (default: 10)
+    uint32_t        max_trade_seconds       = 30;    // Maximum interval between trades in seconds (default: 30)
     time_point      created_at;
     time_point      updated_at;
 
@@ -47,7 +51,9 @@ TBL trade_market_t {
 
     EOSLIB_SERIALIZE( trade_market_t, (trade_market_name)(paused)(target_price)
                                       (min_trade_amount)(max_trade_amount)
-                                      (memo)(updaters)(created_at)(updated_at) )
+                                      (memo)(updaters)(max_slippage)(fluctuation_ratio)
+                                      (min_trade_seconds)(max_trade_seconds)
+                                      (created_at)(updated_at) )
 };
 
 } //namespace flon
