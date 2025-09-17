@@ -34,17 +34,17 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
 
    tokenx_mm(eosio::name receiver, eosio::name code, datastream<const char*> ds): contract(receiver, code, ds),
          _global(get_self(), get_self().value)
-    {
-        _gstate = _global.exists() ? _global.get() : global_t{};
-    }
-    ~tokenx_mm() { _global.set( _gstate, get_self() ); }
+   {
+      _gstate = _global.exists() ? _global.get() : global_t{};
+   }
+   ~tokenx_mm() { _global.set( _gstate, get_self() ); }
 
-    ACTION setadmin( const name& admin );
+   ACTION setadmin( const name& admin );
 
-    ACTION cfgbotmgr( const name& bot_mgr_contract );
+   ACTION cfgbotmgr( const name& bot_mgr_contract );
 
 
-    ACTION setmarket( const name& trade_pair_name, const name& fund_account, const name& bot_group_name );
+   ACTION setmarket( const name& trade_pair_name, const name& fund_account, const name& bot_group_name );
 
    ACTION trade( const name& bot, const name& trade_pair_name, const string& memo );
 
@@ -56,7 +56,9 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
 
    ACTION updatefund(const name& trade_pair_name, const asset& left_pool_balance, const asset& left_pool_total,
                      const asset& right_pool_balance, const asset& right_pool_total);
-   ACTION withdraw(const name& trade_pair_name, const extended_asset& quantity);
+   ACTION withdrawfund(const name& trade_pair_name, const extended_asset& quantity);
+
+   ACTION allocfee(const name& trade_pair_name, const name& bot, const asset& quantity);
 
    using afterswap_action = eosio::action_wrapper<"afterswap"_n, &tokenx_mm::afterswap>;
 

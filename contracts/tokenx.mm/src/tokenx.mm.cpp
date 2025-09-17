@@ -40,7 +40,7 @@ namespace flon {
    struct bot_group_t {
       name                        group_name;     //PK
       string                      desc;
-      vector<name>                bots;
+      set<name>                   bots;
 
       uint64_t primary_key()const { return group_name.value; }
 
@@ -194,7 +194,7 @@ namespace flon {
       auto bot_groups = bot_group_t::idx_t( bot_market_itr->bot_group_name, bot_market_itr->bot_group_name.value );
       auto bot_group_itr = bot_groups.find(bot_market_itr->bot_group_name.value);
       CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + bot_market_itr->bot_group_name.to_string() )
-      CHECKC( bot_group_itr->bots.size() > 0, err::RECORD_NOT_FOUND, "bot group has no bot: " + bot_market_itr->bot_group_name.to_string() )
+      CHECKC( bot_group_itr->bots.count(bot) > 0, err::RECORD_NOT_FOUND, "bot not existed in group: " + bot_market_itr->bot_group_name.to_string() )
 
       auto swap_markets = swap_market_t::idx_t( _gstate.dex_contract, _gstate.dex_contract.value );
       auto swap_market_itr = swap_markets.find( bot_market_itr->trade_pair_name.value );
@@ -417,7 +417,7 @@ namespace flon {
       // TODO: check balance with actual token balance in contract
    }
 
-   void tokenx_mm::withdraw(const name& trade_pair_name, const extended_asset& quantity) {
+   void tokenx_mm::withdrawfund(const name& trade_pair_name, const extended_asset& quantity) {
       auto admin = require_admin_auth();
 
       auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
@@ -440,6 +440,28 @@ namespace flon {
             CHECKC( false, err::PARAM_ERROR, "token contract or symbol not match any side of the bot market" )
          }
       } );
+   }
+
+   void tokenx_mm::allocfee(const name& trade_pair_name, const name& bot, const asset& quantity) {
+      require_auth(bot);
+
+      CHECKC( quantity.amount > 0, err::PARAM_ERROR, "non-positive quantity not allowed" )
+      CHECKC( quantity.symbol == FLON,
+            err::PARAM_ERROR, "only support fee allocation with FLON token" );
+      CHECKC( quantity <= _gstate.available_fees, err::PARAM_ERROR, "insufficient available fees" )
+
+      bot_market_t::idx_t bot_markets( get_self(), get_self().value );
+      auto bot_market_itr = bot_markets.find(trade_pair_name.value);
+      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+
+      auto bot_groups = bot_group_t::idx_t( get_self(), get_self().value );
+      auto bot_group_itr = bot_groups.find(bot_market_itr->bot_group_name.value);
+      CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + bot_market_itr->bot_group_name.to_string() )
+      CHECKC( bot_group_itr->bots.count(bot), err::RECORD_NOT_FOUND, "bot not existed in group: " + bot_market_itr->bot_group_name.to_string() )
+
+      _gstate.available_fees -= quantity;
+      TRANSFER_OUT(SYSTEM_TOKEN, bot, quantity, "fee allocation")
+
    }
 
    void tokenx_mm_old::upgglobal() {
