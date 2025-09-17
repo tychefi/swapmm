@@ -194,6 +194,7 @@ namespace flon {
       auto bot_groups = bot_group_t::idx_t( bot_market_itr->bot_group_name, bot_market_itr->bot_group_name.value );
       auto bot_group_itr = bot_groups.find(bot_market_itr->bot_group_name.value);
       CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + bot_market_itr->bot_group_name.to_string() )
+      CHECKC( bot_group_itr->bots.size() > 0, err::STATUS_ERROR, "no bot in bot group: " + bot_market_itr->bot_group_name.to_string() )
       CHECKC( bot_group_itr->bots.count(bot) > 0, err::RECORD_NOT_FOUND, "bot not existed in group: " + bot_market_itr->bot_group_name.to_string() )
 
       auto swap_markets = swap_market_t::idx_t( _gstate.dex_contract, _gstate.dex_contract.value );
