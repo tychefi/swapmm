@@ -58,8 +58,6 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
                      const asset& right_pool_balance, const asset& right_pool_total);
    ACTION withdrawfund(const name& trade_pair_name, const extended_asset& quantity);
 
-   ACTION allocfee(const name& trade_pair_name, const name& bot, const asset& quantity);
-
    using afterswap_action = eosio::action_wrapper<"afterswap"_n, &tokenx_mm::afterswap>;
 
    private:
@@ -71,14 +69,6 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
       void check_paused() const;
       void do_trade(const name& side, const bot_market_t& bot_market, dex_pool_side_t& input_pool, dex_pool_side_t& output_pool, double min_price, int64_t input_amount, const name& bot, size_t bot_size);
 
-};
-
-class [[eosio::contract("tokenx.mm")]] tokenx_mm_old : public contract {
-
-   public:
-      using contract::contract;
-
-      ACTION upgglobal();
 };
 
 } //namespace flon

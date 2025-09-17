@@ -62,9 +62,8 @@ NTBL("global") global_t {
     name            admin               = "flonian"_n;      // Administrator account name
     name            bot_mgr_contract    = "bot.mm"_n;       // bot manager contract name
     name            dex_contract        = "flon.swap"_n;    // DEX contract name for trading
-    asset           available_fees      = asset(0, FLON);    // Available fees for trading
 
-    EOSLIB_SERIALIZE( global_t, (admin)(bot_mgr_contract)(dex_contract)(available_fees))
+    EOSLIB_SERIALIZE( global_t, (admin)(bot_mgr_contract)(dex_contract))
 };
 typedef eosio::singleton< "global"_n, global_t > global_singleton;
 

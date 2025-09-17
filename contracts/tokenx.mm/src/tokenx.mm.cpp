@@ -333,11 +333,7 @@ namespace flon {
       if (memo_params.size() < 1) {
          return;
       }
-      if (memo_params[0] != "addfee") {
-         CHECKC(token_contract == SYSTEM_TOKEN && quant.symbol == FLON,
-               err::PARAM_ERROR, "only support addfee with FLON token" );
-         _gstate.available_fees += quant;
-      } else if (memo_params[0] != "addfund") {
+      if (memo_params[0] == "addfund") {
          CHECKC( memo_params.size() == 2, err::PARAM_ERROR, "invalid memo format" )
          name trade_pair_name = name(memo_params[1]);
 
@@ -441,57 +437,6 @@ namespace flon {
             CHECKC( false, err::PARAM_ERROR, "token contract or symbol not match any side of the bot market" )
          }
       } );
-   }
-
-   void tokenx_mm::allocfee(const name& trade_pair_name, const name& bot, const asset& quantity) {
-      require_auth(bot);
-
-      CHECKC( quantity.amount > 0, err::PARAM_ERROR, "non-positive quantity not allowed" )
-      CHECKC( quantity.symbol == FLON,
-            err::PARAM_ERROR, "only support fee allocation with FLON token" );
-      CHECKC( quantity <= _gstate.available_fees, err::PARAM_ERROR, "insufficient available fees" )
-
-      bot_market_t::idx_t bot_markets( get_self(), get_self().value );
-      auto bot_market_itr = bot_markets.find(trade_pair_name.value);
-      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
-
-      auto bot_groups = bot_group_t::idx_t( get_self(), get_self().value );
-      auto bot_group_itr = bot_groups.find(bot_market_itr->bot_group_name.value);
-      CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + bot_market_itr->bot_group_name.to_string() )
-      CHECKC( bot_group_itr->bots.count(bot), err::RECORD_NOT_FOUND, "bot not existed in group: " + bot_market_itr->bot_group_name.to_string() )
-
-      _gstate.available_fees -= quantity;
-      TRANSFER_OUT(SYSTEM_TOKEN, bot, quantity, "fee allocation")
-
-   }
-
-   void tokenx_mm_old::upgglobal() {
-
-      global_old_t old_gstate;
-      {
-         global_singleton_old global_old_tbl(get_self(), get_self().value);
-         CHECKC( global_old_tbl.exists(), err::RECORD_NOT_FOUND, "old global state not existing" )
-         old_gstate = global_old_tbl.get();
-         global_old_tbl.remove();
-      }
-
-      name admin;
-      if (old_gstate.admin.value != 0 && has_auth(old_gstate.admin)) {
-         admin = old_gstate.admin;
-      } else if (has_auth(_self)) {
-         admin = _self;
-      } else {
-         CHECKC(false, err::NO_AUTH, "miss self or admin authorization");
-      }
-
-      global_t gstate = {
-         .admin = old_gstate.admin,
-         .bot_mgr_contract = old_gstate.bot_mgr_contract,
-         .dex_contract = old_gstate.dex_contract
-      };
-
-      global_singleton global_tbl(get_self(), get_self().value);
-      global_tbl.set( gstate, admin );
    }
 
 }// namespace flon
