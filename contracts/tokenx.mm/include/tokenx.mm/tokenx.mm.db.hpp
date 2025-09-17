@@ -34,6 +34,7 @@ static constexpr uint64_t seconds_per_day                   = 24 * 3600;
 static constexpr uint64_t order_expiry_duration             = seconds_per_day;
 static constexpr uint64_t manual_order_expiry_duration      = 3 * seconds_per_day;
 
+static constexpr name SYSTEM_TOKEN                          = name("flon.token");
 static constexpr symbol FLON                                = symbol(symbol_code("FLON"), 8);
 static constexpr symbol USDT                                = symbol(symbol_code("USDT"), 6);
 
@@ -61,8 +62,9 @@ NTBL("global") global_t {
     name            admin               = "flonian"_n;      // Administrator account name
     name            bot_mgr_contract    = "bot.mm"_n;       // bot manager contract name
     name            dex_contract        = "flon.swap"_n;    // DEX contract name for trading
+    asset           available_fees      = asset(0, FLON);    // Available fees for trading
 
-    EOSLIB_SERIALIZE( global_t, (admin)(bot_mgr_contract)(dex_contract))
+    EOSLIB_SERIALIZE( global_t, (admin)(bot_mgr_contract)(dex_contract)(available_fees))
 };
 typedef eosio::singleton< "global"_n, global_t > global_singleton;
 

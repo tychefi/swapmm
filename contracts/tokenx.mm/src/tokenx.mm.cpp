@@ -332,27 +332,30 @@ namespace flon {
       if (memo_params.size() < 1) {
          return;
       }
-      if (memo_params[0] != "deposit") {
-         return;
-      }
-      CHECKC( memo_params.size() == 2, err::PARAM_ERROR, "invalid memo format" )
-      name trade_pair_name = name(memo_params[1]);
+      if (memo_params[0] != "addfee") {
+         CHECKC(token_contract == SYSTEM_TOKEN && quant.symbol == FLON,
+               err::PARAM_ERROR, "only support addfee with FLON token" );
+         _gstate.available_fees += quant;
+      } else if (memo_params[0] != "addfund") {
+         CHECKC( memo_params.size() == 2, err::PARAM_ERROR, "invalid memo format" )
+         name trade_pair_name = name(memo_params[1]);
 
-      auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
-      auto bot_market_itr = bot_markets.find(trade_pair_name.value);
-      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
-      bot_markets.modify( bot_market_itr, same_payer, [&] (auto& row) {
-         if (token_contract == row.left_pool.balance.contract && quant.symbol == row.left_pool.balance.quantity.symbol) {
-            row.left_pool.balance.quantity += quant;
-            row.left_pool.total_quantity += quant;
-         } else if (token_contract == row.right_pool.balance.contract && quant.symbol == row.right_pool.balance.quantity.symbol) {
-            row.right_pool.balance.quantity += quant;
-            row.right_pool.total_quantity += quant;
-         } else {
-            CHECKC( false, err::PARAM_ERROR, "token contract or symbol not match any side of the bot market" )
-         }
-      } );
-      TRANSFER_OUT(token_contract, bot_market_itr->fund_account, quant, "to bot fund")
+         auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
+         auto bot_market_itr = bot_markets.find(trade_pair_name.value);
+         CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+         bot_markets.modify( bot_market_itr, same_payer, [&] (auto& row) {
+            if (token_contract == row.left_pool.balance.contract && quant.symbol == row.left_pool.balance.quantity.symbol) {
+               row.left_pool.balance.quantity += quant;
+               row.left_pool.total_quantity += quant;
+            } else if (token_contract == row.right_pool.balance.contract && quant.symbol == row.right_pool.balance.quantity.symbol) {
+               row.right_pool.balance.quantity += quant;
+               row.right_pool.total_quantity += quant;
+            } else {
+               CHECKC( false, err::PARAM_ERROR, "token contract or symbol not match any side of the bot market" )
+            }
+         } );
+         TRANSFER_OUT(token_contract, bot_market_itr->fund_account, quant, "to bot fund")
+      }
    }
 
    void tokenx_mm::afterswap(const name& bot, const name& trade_pair_name, const name& side, const asset& input_quantity, const asset& bot_received_before) {
