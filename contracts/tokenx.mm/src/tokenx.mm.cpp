@@ -3,6 +3,7 @@
 
 #include <flon/utils.hpp>
 #include <contract_version.hpp>
+#include <tokenx.mm/tokenx.mm.old.hpp>
 
 static constexpr eosio::name active_permission{"active"_n};
 
@@ -436,6 +437,35 @@ namespace flon {
             CHECKC( false, err::PARAM_ERROR, "token contract or symbol not match any side of the bot market" )
          }
       } );
+   }
+
+   void tokenx_mm_old::upgglobal() {
+
+      global_old_t old_gstate;
+      {
+         global_singleton_old global_old_tbl(get_self(), get_self().value);
+         CHECKC( global_old_tbl.exists(), err::RECORD_NOT_FOUND, "old global state not existing" )
+         old_gstate = global_old_tbl.get();
+         global_old_tbl.remove();
+      }
+
+      name admin;
+      if (old_gstate.admin.value != 0 && has_auth(old_gstate.admin)) {
+         admin = old_gstate.admin;
+      } else if (has_auth(_self)) {
+         admin = _self;
+      } else {
+         CHECKC(false, err::NO_AUTH, "miss self or admin authorization");
+      }
+
+      global_t gstate = {
+         .admin = old_gstate.admin,
+         .bot_mgr_contract = old_gstate.bot_mgr_contract,
+         .dex_contract = old_gstate.dex_contract
+      };
+
+      global_singleton global_tbl(get_self(), get_self().value);
+      global_tbl.set( gstate, admin );
    }
 
 }// namespace flon

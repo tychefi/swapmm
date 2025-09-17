@@ -71,5 +71,12 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
 
 };
 
+class [[eosio::contract("tokenx.mm")]] tokenx_mm_old : public contract {
+
+   public:
+      using contract::contract;
+
+      ACTION upgglobal();
+};
 
 } //namespace flon
