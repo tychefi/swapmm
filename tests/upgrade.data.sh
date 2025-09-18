@@ -69,24 +69,39 @@ fucli -u "$node_url" get table "$tokenx_mm_contract" "$tokenx_mm_contract" botma
 
 # 5. setup permission
 #5.1 create new permission "trade" to bot_admin if not exist
-echo "Checking if 'trade' permission exists for $bot_admin ..."
-u=botuser11111
-if ! fucli -u "$node_url" get account "$u" | grep -q '"perm_name": "trade"'; then
-    echo "Creating 'trade' permission for $u ..."
-    authority='{"threshold":1,"keys":[],"accounts":[{"permission":{"actor":"'${bot_admin}'","permission":"trade"},"weight":1}],"waits":[]}'
-    fucli -u "$node_url" set account permission "$u" trade "$authority" active -p "$u@active"
-else
-    echo "'trade' permission already exists for $u, skipping creation."
-fi
+create_trade_permission() {
+    local user="$1"
+    local admin="$2"
+    echo "Checking if 'trade' permission exists for $user ..."
+    if ! fucli -u "$node_url" get account "$user" | grep -q '"perm_name": "trade"'; then
+        echo "Creating 'trade' permission for $user ..."
+        authority='{"threshold":1,"keys":[],"accounts":[{"permission":{"actor":"'"$admin"'","permission":"trade"},"weight":1}],"waits":[]}'
+        fucli -u "$node_url" set account permission "$user" trade "$authority" active -p "$user@active"
+    else
+        echo "'trade' permission already exists for $user, skipping creation."
+    fi
+}
+
+for u in "${bot_users[@]}"; do
+    create_trade_permission "$u" "$bot_admin"
+done
 
 #5.2 link trade action to "trade" permission of bot_admin, skip if already set
-echo "Checking if trade action link exists for $u ..."
-if ! fucli -u "$node_url" get account "$u" | grep -q '"code": "'$tokenx_mm_contract'", "type": "trade", "required_permission": "trade"'; then
-    echo "Linking trade action to trade permission ..."
-    fucli -u "$node_url" set action permission "$u" "$tokenx_mm_contract" trade trade -p "$u@active"
-else
-    echo "trade action already linked to trade permission, skipping."
-fi
+link_trade_action_permission() {
+    local user="$1"
+    local contract="$2"
+    echo "Checking if trade action link exists for $user ..."
+    if ! fucli -u "$node_url" get account "$user" | grep -q "${contract}::trade"; then
+        echo "Linking trade action to trade permission ..."
+        fucli -u "$node_url" set action permission "$user" "$contract" trade trade -p "$user@active"
+    else
+        echo "trade action already linked to trade permission, skipping."
+    fi
+}
+
+for u in "${bot_users[@]}"; do
+    link_trade_action_permission "$u" "$tokenx_mm_contract"
+done
 
 #6. execute trade by bot user
 fucli -u "$node_url" push action "$tokenx_mm_contract" trade '["botuser11111", "flon.usdt", "123"]' -p "$bot_fund@trade" -p "botuser11111@trade"
