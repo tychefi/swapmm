@@ -138,7 +138,18 @@ namespace flon {
    void buylowsellhi::deltrademkt( const name& trade_market_name ) {
       require_admin_auth();
 
-      auto markets   = trade_market_t::idx_t( get_self(), get_self().value );
+      // Use trade_market_simple_t to ensure compatibility when deleting data in the old format.
+      struct trade_market_simple_t {
+         name            trade_market_name;              // trading market name, PK
+
+         uint64_t primary_key()const { return trade_market_name.value; }
+
+         typedef eosio::multi_index< "trademarkets"_n,  trade_market_simple_t> idx_t;
+
+         EOSLIB_SERIALIZE( trade_market_simple_t, (trade_market_name) )
+      };
+
+      auto markets   = trade_market_simple_t::idx_t( get_self(), get_self().value );
       auto itr       = markets.find( trade_market_name.value );
       CHECKC( itr    != markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + trade_market_name.to_string() )
 
