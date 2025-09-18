@@ -167,7 +167,7 @@ namespace flon {
    }
 
    void tokenx_mm::trade( const name& bot, const name& trade_pair_name, const string& memo ) {
-      require_admin_auth();
+      require_auth(bot);
       bot_market_t::idx_t bot_markets( get_self(), get_self().value );
       auto bot_market_itr = bot_markets.find(trade_pair_name.value);
       CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
@@ -191,7 +191,7 @@ namespace flon {
 
       CHECKC( !market_itr->paused, err::STATUS_ERROR, "market is paused: " + bot_market_itr->trade_pair_name.to_string() )
 
-      auto bot_groups = bot_group_t::idx_t( bot_market_itr->bot_group_name, bot_market_itr->bot_group_name.value );
+      auto bot_groups = bot_group_t::idx_t( _gstate.bot_mgr_contract, _gstate.bot_mgr_contract.value );
       auto bot_group_itr = bot_groups.find(bot_market_itr->bot_group_name.value);
       CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + bot_market_itr->bot_group_name.to_string() )
       CHECKC( bot_group_itr->bots.size() > 0, err::STATUS_ERROR, "no bot in bot group: " + bot_market_itr->bot_group_name.to_string() )
@@ -412,6 +412,40 @@ namespace flon {
          row.right_pool.total_quantity = right_pool_total;
       } );
       // TODO: check balance with actual token balance in contract
+   }
+
+   void tokenx_mm::refreshfund(const name& trade_pair_name) {
+      auto admin = require_admin_auth();
+
+      auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
+      auto bot_market_itr = bot_markets.find(trade_pair_name.value);
+      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+
+      auto bot_groups = bot_group_t::idx_t( _gstate.bot_mgr_contract, _gstate.bot_mgr_contract.value );
+      auto bot_group_itr = bot_groups.find(bot_market_itr->bot_group_name.value);
+      CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + bot_market_itr->bot_group_name.to_string() )
+
+      const auto& left_symbol = bot_market_itr->left_pool.balance.quantity.symbol;
+      const auto& right_symbol = bot_market_itr->right_pool.balance.quantity.symbol;
+      const auto& left_contract = bot_market_itr->left_pool.balance.contract;
+      const auto& right_contract = bot_market_itr->right_pool.balance.contract;
+      asset left_balance = flon_token::get_balance( left_contract, bot_market_itr->fund_account, left_symbol, false );
+      asset right_balance = flon_token::get_balance( right_contract, bot_market_itr->fund_account, right_symbol, false );
+
+      asset left_total_quantity = left_balance;
+      asset right_total_quantity = right_balance;
+
+      for (const auto& bot : bot_group_itr->bots) {
+         left_total_quantity += flon_token::get_balance( left_contract, bot, left_symbol, false );
+         right_total_quantity += flon_token::get_balance( right_contract, bot, right_symbol, false );
+      }
+      bot_markets.modify( bot_market_itr, admin, [&] (auto& row) {
+         row.left_pool.balance.quantity = left_balance;
+         row.left_pool.total_quantity = left_total_quantity;
+         row.right_pool.balance.quantity = right_balance;
+         row.right_pool.total_quantity = right_total_quantity;
+      } );
+
    }
 
    void tokenx_mm::withdrawfund(const name& trade_pair_name, const extended_asset& quantity) {
