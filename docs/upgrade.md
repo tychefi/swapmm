@@ -41,6 +41,7 @@ export usdt_token_contract="flon.mtoken"
 ## 2. Clone Repository and Build Contracts
 
 ```bash
+# git clone, or git pull if you have already cloned
 git clone https://github.com/tychefi/swapmm.git
 cd swapmm
 bash build.sh
@@ -48,26 +49,12 @@ bash build.sh
 
 **Important: Please make sure your working directory is `swapmm`, otherwise subsequent scripts and commands may not work correctly.**
 
-## 2. Create Accounts**
-### Create Contract Accounts
-```bash
-# create bot_mm_contract account
-fucli -u $url system newaccount $bot_admin $bot_mm_contract "$bot_admin@active" --fund-account "1.0 FLON" -p $bot_admin@active
-fucli -u "$url" set account permission "$bot_mm_contract" active --add-code -p "$bot_mm_contract@active"
-# create buylowsellhi account
-fucli -u $url system newaccount $bot_admin $buylowsellhi_contract "$bot_admin@active" --fund-account "1.0 FLON" -p $bot_admin@active
-fucli -u "$url" set account permission "$buylowsellhi_contract" active --add-code -p "$buylowsellhi_contract@active"
-# create tokenx_mm_contract account
-fucli -u $url system newaccount $bot_admin $tokenx_mm_contract "$bot_admin@active" --fund-account "1.0 FLON" -p $bot_admin@active
-fucli -u "$url" set account permission "$tokenx_mm_contract" active --add-code -p "$tokenx_mm_contract@active"
-```
-
-### Create market fund account
+## 3. Create market fund account
 ```bash
 fucli -u $url system newaccount $bot_admin "$market_fund_account" "$bot_admin@active" "$tokenx_mm_contract@active" --fund-account "1.0 FLON" -p $bot_admin@active
 ```
 
-## 3. Upgrade Contracts
+## 4. Upgrade Contracts
 
 ```bash
 # bot.mm contract
@@ -78,14 +65,13 @@ fucli -u $url set contract $buylowsellhi_contract build/contracts/buylowsellhi -
 fucli -u $url set contract $tokenx_mm_contract build/contracts/tokenx.mm -p $tokenx_mm_contract@active
 ```
 
-## 4. Upgrade data of trade market in `buylowsellhi` contract
+## 5. Upgrade data of trade market in `buylowsellhi` contract
 ```bash
 # Note: The upgrade can only be performed once. If you have already executed this command, please skip this step.
 fucli -u $url push action $buylowsellhi_contract upgtrademkt '["'$trade_pair'"]' -p $buylowsellhi_contract@active
 ```
 
-
-## 8. Create trade Permission for bot accounts
+## 6. Create trade Permission for bot accounts
 
 ```bash
 for user in "${bot_users[@]}"; do
@@ -94,18 +80,30 @@ for user in "${bot_users[@]}"; do
 done
 
 ```
-## 9. Link trade Permission of bot accounts to `trade` Action of `tokenx.mm`
+## 7. Link trade Permission of bot accounts to `trade` Action of `tokenx.mm`
 ```bash
 for user in "${bot_users[@]}"; do
     fucli -u "$url" set action permission "$user" "$tokenx_mm_contract" trade trade -p "$user@active"
 done
 ```
 
-## 10. Fund Preparation and Deposit
+## 8. Set bot market in `tokenx.mm` contract
+
+```bash
+fucli -u "$url" push action "$tokenx_mm_contract" setmarket '["'$trade_pair'", "'$market_fund_account'", "'$trade_pair'"]' -p "$bot_admin@active"
+```
+
+## 9. Fund Preparation and Deposit
 
 ```bash
 fucli -u $url transfer $fund_account $tokenx_mm_contract "$deposit_flon" "addfund:$trade_pair" --contract $flon_token_contract
 fucli -u $url transfer $fund_account $tokenx_mm_contract "$deposit_usdt" "addfund:$trade_pair" --contract $usdt_token_contract
+```
+
+## 10. Refresh market fund info
+
+```bash
+fucli -u "$url" push action "$tokenx_mm_contract" refreshfund '["'$trade_pair'"]' -p "$tokenx_mm_contract@active"
 ```
 
 ## 11. Check and Verify
@@ -115,12 +113,12 @@ fucli -u "$url" get table "$buylowsellhi_contract" "$buylowsellhi_contract" trad
 # Check trade market of tokenx.mm
 fucli -u "$url" get table "$tokenx_mm_contract" "$tokenx_mm_contract" botmarkets -L "$trade_pair" -l 1
 
-
+# Verify bots trade
 for user in "${bot_users[@]}"; do
     memo=$(od -An -N4 -tu4 /dev/urandom | tr -d ' \n')
     fucli -u "$url" push action "$tokenx_mm_contract" trade '["'"$user"'","'"$trade_pair"'","'$memo'"]' -p "$fee_payer@trade" -p "$user@trade"
 done
 ```
 
-## Upgrade Complete
+## 12. Upgrade Complete
 If you need to upgrade the bot service, please refer to the [Bot Setup Guide](https://github.com/tychefi/pydexbot/blob/main/docs/setup.pydexbot.md)
