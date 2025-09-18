@@ -9,6 +9,16 @@ namespace flon {
 
    using namespace std;
 
+   struct trade_market_simple_t {
+      name            trade_market_name;              // trading market name, PK
+
+      uint64_t primary_key()const { return trade_market_name.value; }
+
+      typedef eosio::multi_index< "trademarkets"_n,  trade_market_simple_t> idx_t;
+
+      EOSLIB_SERIALIZE( trade_market_simple_t, (trade_market_name) )
+   };
+
    DEFINE_VERSION_CONTRACT_CLASS("buylowsellhi", buylowsellhi)
 
    const name& buylowsellhi::require_admin_auth() const {
@@ -139,15 +149,6 @@ namespace flon {
       require_admin_auth();
 
       // Use trade_market_simple_t to ensure compatibility when deleting data in the old format.
-      struct trade_market_simple_t {
-         name            trade_market_name;              // trading market name, PK
-
-         uint64_t primary_key()const { return trade_market_name.value; }
-
-         typedef eosio::multi_index< "trademarkets"_n,  trade_market_simple_t> idx_t;
-
-         EOSLIB_SERIALIZE( trade_market_simple_t, (trade_market_name) )
-      };
 
       auto markets   = trade_market_simple_t::idx_t( get_self(), get_self().value );
       auto itr       = markets.find( trade_market_name.value );
