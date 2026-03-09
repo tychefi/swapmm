@@ -115,12 +115,14 @@ namespace flon {
       _gstate.bot_mgr_contract = bot_mgr_contract;
     }
 
-    static double calc_price(const asset& input_pool_quantity, const asset& output_pool_quantity) {
-      int64_t in_amount = input_pool_quantity.amount;
-      int64_t out_amount = output_pool_quantity.amount;
-      int64_t in_boost = power10(input_pool_quantity.symbol.precision());
-      int64_t out_boost = power10(output_pool_quantity.symbol.precision());
-      return (double)out_amount * in_boost / (in_amount * out_boost);
+    static double calc_price(const asset& left_pool_quantity, const asset& right_pool_quantity) {
+      int64_t left_amount = left_pool_quantity.amount;
+      int64_t left_boost = power10(left_pool_quantity.symbol.precision());
+
+      int64_t right_amount = right_pool_quantity.amount;
+      int64_t right_boost = power10(right_pool_quantity.symbol.precision());
+
+      return ((double)right_amount * left_boost) / ((double) left_amount * right_boost);
     }
 
    static double calc_trade_out(double price, int64_t input_amount, const symbol& input_symbol, const symbol& output_symbol) {
@@ -211,9 +213,9 @@ namespace flon {
 
       CHECKC( swap_market_itr->left_pool_quant.quantity.amount > 0, err::STATUS_ERROR, "invalid dex market left pool amount" )
       CHECKC( swap_market_itr->right_pool_quant.quantity.amount > 0, err::STATUS_ERROR, "invalid dex market right pool amount" )
-      int64_t left_pool_amount = swap_market_itr->left_pool_quant.quantity.amount;
-      int64_t right_pool_amount = swap_market_itr->right_pool_quant.quantity.amount;
-      double right_to_left_ratio = (double)right_pool_amount / left_pool_amount;
+      // int64_t left_pool_amount = swap_market_itr->left_pool_quant.quantity.amount;
+      // int64_t right_pool_amount = swap_market_itr->right_pool_quant.quantity.amount;
+      // double right_to_left_ratio = (double)right_pool_amount / left_pool_amount;
       double left_price = calc_price(swap_market_itr->left_pool_quant.quantity, swap_market_itr->right_pool_quant.quantity);
 
       CHECKC( left_price > 0, err::STATUS_ERROR, "invalid market actual price" )
