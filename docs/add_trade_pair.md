@@ -26,6 +26,7 @@
 
 ```bash
 # Prepare environment variables
+fee_payer="flonian"
 bot_admin="flonian"
 fund_account="flonian"
 trade_updater="flonian"
