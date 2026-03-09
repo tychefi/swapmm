@@ -74,7 +74,7 @@ fucli -u "$url" push action "$buylowsellhi_contract" settrademkt "$data" -p "$bu
 
 ```bash
 for bot in "${bot_users[@]}"; do
-    authority='{"threshold":1,"keys":[],"accounts":[{"permission":{"actor":"'"$bot_admin"'","permission":"trade"},"weight":1}],"waits":[]'
+    authority='{"threshold":1,"keys":[],"accounts":[{"permission":{"actor":"'"$bot_admin"'","permission":"trade"},"weight":1}],"waits":[]}'
     fucli -u $url set account permission $bot trade "$authority" active -p $bot@active
 done
 ```
