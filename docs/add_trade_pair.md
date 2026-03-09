@@ -95,8 +95,8 @@ fucli -u "$url" push action "$tokenx_mm_contract" setmarket '["'$trade_pair'", "
 ## 8. Fund Preparation and Deposit
 
 ```bash
-fucli -u $url transfer $fund_account $tokenx_mm_contract "$deposit_flon" "addfund:$trade_pair" --contract $flon_token_contract
-fucli -u $url transfer $fund_account $tokenx_mm_contract "$deposit_usdt" "addfund:$trade_pair" --contract $usdt_token_contract
+fucli -u $url transfer $fund_account $tokenx_mm_contract "$deposit_flon" "addfund:$trade_pair" --contract $left_token_contract
+fucli -u $url transfer $fund_account $tokenx_mm_contract "$deposit_usdt" "addfund:$trade_pair" --contract $right_token_contract
 ```
 
 ## 9. Refresh market fund info
