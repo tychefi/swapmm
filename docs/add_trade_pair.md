@@ -42,8 +42,8 @@ bot_users=("ethusdtusr11" "ethusdtusr12" "ethusdtusr13")
 market_fund_account="ethusdtfund1"
 url="https://m.flonscan.io"
 dex_contract="flon.swap"
-left_contract="flon.mtoken"
-right_contract="flon.mtoken"
+left_token_contract="flon.mtoken"
+right_token_contract="flon.mtoken"
 ```
 
 ## 2. Create market fund account
