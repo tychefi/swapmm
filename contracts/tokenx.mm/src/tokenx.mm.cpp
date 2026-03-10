@@ -288,11 +288,9 @@ namespace flon {
             int64_t max_balance_per_bot = input_pool.total_quantity.amount * 0.5 / bot_size;
             int64_t transfer_amount = min(max(min_transfer, max_balance_per_bot), input_pool_balance.amount);
             max_balance_per_bot = min(max_balance_per_bot, input_pool_balance.amount);
-            // TODO: transfer out to bot， check in ontransfer
             asset transfer_quant = asset(transfer_amount, input_symbol);
             input_pool_balance -= transfer_quant;
-            // TODO: transfer_out memo: out:{nonce}
-            TRANSFER(input_contract, get_self(),  bot, transfer_quant, "")
+            TRANSFER(input_contract, bot_market.fund_account,  bot, transfer_quant, "")
          }
 
          asset bot_received_before = flon_token::get_balance( output_contract, bot, output_symbol, false );
