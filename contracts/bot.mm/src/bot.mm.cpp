@@ -16,6 +16,7 @@ namespace flon {
          return _self;
       } else {
          CHECKC(false, err::NO_AUTH, "miss self or admin authorization");
+         __builtin_unreachable();
       }
    }
 
