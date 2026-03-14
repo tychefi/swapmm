@@ -30,12 +30,6 @@ include(ExternalProject)
 find_package(flon.cdt)
 message( STATUS "Found flon.cdt at \"${CDT_ROOT}\"")
 
-option(SYSTEM_CONFIGURABLE_WASM_LIMITS
-       "Enables use of the host functions activated by the CONFIGURABLE_WASM_LIMITS protocol feature" ON)
-
-option(SYSTEM_BLOCKCHAIN_PARAMETERS
-       "Enables use of the host functions activated by the BLOCKCHAIN_PARAMETERS protocol feature" ON)
-
 option(SYSTEM_ENABLE_CHAIN_CORE_VERSION_CHECK
       "Enables a configure-time check that the version of chain core's tester library is compatible with this project's unit tests" ON)
 
@@ -57,8 +51,6 @@ ExternalProject_Add(
   INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/install
   CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
              -DCMAKE_TOOLCHAIN_FILE=${CDT_TOOLCHAIN_FILE}
-             -DSYSTEM_CONFIGURABLE_WASM_LIMITS=${SYSTEM_CONFIGURABLE_WASM_LIMITS}
-             -DSYSTEM_BLOCKCHAIN_PARAMETERS=${SYSTEM_BLOCKCHAIN_PARAMETERS}
              -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
             #  -DBUILD_TESTS=${BUILD_TESTS}
              -DSYSTEM_ENABLE_CDT_VERSION_CHECK=${SYSTEM_ENABLE_CDT_VERSION_CHECK}
