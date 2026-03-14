@@ -1,7 +1,6 @@
 #include <buylowsellhi/buylowsellhi.hpp>
 #include <flon/utils.hpp>
 #include <contract_version.hpp>
-#include <buylowsellhi/buylowsellhi.old.hpp>
 
 static constexpr eosio::name active_permission{"active"_n};
 
@@ -9,15 +8,6 @@ namespace flon {
 
    using namespace std;
 
-   struct trade_market_simple_t {
-      name            trade_market_name;              // trading market name, PK
-
-      uint64_t primary_key()const { return trade_market_name.value; }
-
-      typedef eosio::multi_index< "trademarkets"_n,  trade_market_simple_t> idx_t;
-
-      EOSLIB_SERIALIZE( trade_market_simple_t, (trade_market_name) )
-   };
 
    DEFINE_VERSION_CONTRACT_CLASS("buylowsellhi", buylowsellhi)
 
@@ -28,6 +18,7 @@ namespace flon {
          return _self;
       } else {
          CHECKC(false, err::NO_AUTH, "miss self or admin authorization");
+         __builtin_unreachable();
       }
    }
 
@@ -171,9 +162,7 @@ namespace flon {
    void buylowsellhi::deltrademkt( const name& trade_market_name ) {
       require_admin_auth();
 
-      // Use trade_market_simple_t to ensure compatibility when deleting data in the old format.
-
-      auto markets   = trade_market_simple_t::idx_t( get_self(), get_self().value );
+      auto markets   = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr       = markets.find( trade_market_name.value );
       CHECKC( itr    != markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + trade_market_name.to_string() )
 
@@ -182,26 +171,26 @@ namespace flon {
 
    void buylowsellhi::upgtrademkt( const name& trade_market_name) {
       require_admin_auth();
-      trade_market_old_t old;
+      trade_market_t tm;
       {
-         auto old_markets = trade_market_old_t::idx_t( get_self(), get_self().value );
-         auto old_itr = old_markets.find( trade_market_name.value );
-         CHECKC( old_itr != old_markets.end(), err::RECORD_NOT_FOUND, "old market not existing: " + trade_market_name.to_string() )
-         old = *old_itr;
-         old_markets.erase(old_itr);
+         auto markets = trade_market_t::idx_t( get_self(), get_self().value );
+         auto itr = markets.find( trade_market_name.value );
+         CHECKC( itr != markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + trade_market_name.to_string() )
+         tm = *itr;
+         markets.erase(itr);
       }
 
       auto markets   = trade_market_t::idx_t( get_self(), get_self().value );
       markets.emplace( get_self(), [&] (auto& row) {
-         row.trade_market_name   = old.trade_market_name;
-         row.paused              = old.paused;
-         row.target_price        = old.target_price;
-         row.min_trade_amount    = old.min_trade_amount;
-         row.max_trade_amount    = old.max_trade_amount;
-         row.memo                = old.memo;
-         row.updaters            = old.updaters;
-         row.created_at          = old.created_at;
-         row.updated_at          = old.updated_at;
+         row.trade_market_name   = tm.trade_market_name;
+         row.paused              = tm.paused;
+         row.target_price        = tm.target_price;
+         row.min_trade_amount    = tm.min_trade_amount;
+         row.max_trade_amount    = tm.max_trade_amount;
+         row.memo                = tm.memo;
+         row.updaters            = tm.updaters;
+         row.created_at          = tm.created_at;
+         row.updated_at          = tm.updated_at;
          // new fields with default values
       } );
    }
