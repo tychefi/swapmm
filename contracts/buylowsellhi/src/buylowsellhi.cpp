@@ -132,6 +132,29 @@ namespace flon {
       } );
    }
 
+   void buylowsellhi::setslippage( const name& updater, const name& trade_market_name, double max_slippage, double fluctuation_ratio ) {
+      require_auth( updater );
+
+      auto markets   = trade_market_t::idx_t( get_self(), get_self().value );
+      auto itr       = markets.find( trade_market_name.value );
+      CHECKC( itr    != markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + trade_market_name.to_string() )
+
+      CHECKC( updater == get_self() || updater == _gstate.admin || itr->updaters.count( updater ), err::NO_AUTH, "updater no permission:" + updater.to_string() );
+
+      CHECKC( max_slippage >= 0.0 && max_slippage <= 1.0, err::PARAM_ERROR, "max_slippage must be between 0.0 and 1.0" );
+      CHECKC( fluctuation_ratio >= 0.0 && fluctuation_ratio <= 1.0, err::PARAM_ERROR, "fluctuation_ratio must be between 0.0 and 1.0" );
+
+      if (itr->max_slippage == max_slippage && itr->fluctuation_ratio == fluctuation_ratio) {
+         CHECKC( false, err::PARAM_ERROR, "no data change" )
+      }
+
+      markets.modify( itr, same_payer, [&] (auto& row) {
+         row.max_slippage        = max_slippage;
+         row.fluctuation_ratio   = fluctuation_ratio;
+         row.updated_at          = current_time_point();
+      } );
+   }
+
    void buylowsellhi::setupdaters( const name group_name, const set<name>& updaters ) {
       require_admin_auth();
 

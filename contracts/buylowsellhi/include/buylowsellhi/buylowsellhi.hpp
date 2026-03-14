@@ -92,6 +92,15 @@ class [[eosio::contract("buylowsellhi")]] buylowsellhi : public contract {
    ACTION setamount( const name& updater, const name& trade_market_name, const asset& min_trade_amount, const asset& max_trade_amount );
 
    /**
+    * @brief Set the slippage parameters for a trade market.
+    * @param updater The account requesting the update (must be authorized updater for the market).
+    * @param trade_market_name The name of the trade market to update.
+    * @param max_slippage The maximum allowed slippage.
+    * @param fluctuation_ratio The price fluctuation ratio for sideways market.
+    */
+   ACTION setslippage( const name& updater, const name& trade_market_name, double max_slippage, double fluctuation_ratio );
+
+   /**
     * @brief Set the updaters for a trade market.
     * @param group_name The name of the trade market.
     * @param updaters Set of updater account names.
