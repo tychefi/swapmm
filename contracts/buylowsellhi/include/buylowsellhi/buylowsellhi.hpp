@@ -82,14 +82,12 @@ class [[eosio::contract("buylowsellhi")]] buylowsellhi : public contract {
 
 
    /**
-    * @brief Set the minimum and maximum trade amount for a trade market.
-    * @details Allows an authorized updater to set the minimum and maximum trade amounts for a specific trade market. This action does not affect the target price, only the allowed trade amount range.
-    * @param updater The account requesting the update (must be authorized updater for the market).
+    * @brief Set the minimum and maximum trade amount for a trade market (admin only).
     * @param trade_market_name The name of the trade market to update.
-    * @param min_trade_amount The new minimum trade amount, it must be left side.
-    * @param max_trade_amount The new maximum trade amount, it must be left side
+    * @param min_trade_amount The new minimum trade amount.
+    * @param max_trade_amount The new maximum trade amount.
     */
-   ACTION setamount( const name& updater, const name& trade_market_name, const asset& min_trade_amount, const asset& max_trade_amount );
+   ACTION settradeamt( const name& trade_market_name, const asset& min_trade_amount, const asset& max_trade_amount );
 
    /**
     * @brief Set the slippage parameters for a trade market.

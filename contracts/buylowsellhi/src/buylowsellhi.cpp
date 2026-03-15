@@ -123,6 +123,23 @@ namespace flon {
       } );
    }
 
+   void buylowsellhi::settradeamt( const name& trade_market_name, const asset& min_trade_amount, const asset& max_trade_amount ) {
+      require_admin_auth();
+
+      auto markets   = trade_market_t::idx_t( get_self(), get_self().value );
+      auto itr       = markets.find( trade_market_name.value );
+      CHECKC( itr    != markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + trade_market_name.to_string() );
+
+      CHECKC( min_trade_amount.symbol == max_trade_amount.symbol, err::PARAM_ERROR, "min and max trade amount symbol mismatch" );
+      CHECKC( min_trade_amount.amount <= max_trade_amount.amount, err::PARAM_ERROR, "min trade amount can not be greater than max trade amount" );
+
+      markets.modify( itr, same_payer, [&] (auto& row) {
+         row.min_trade_amount    = min_trade_amount;
+         row.max_trade_amount    = max_trade_amount;
+         row.updated_at          = current_time_point();
+      } );
+   }
+
    void buylowsellhi::setslippage( const name& updater, const name& trade_market_name, double max_slippage, double fluctuation_ratio ) {
       require_auth( updater );
 
