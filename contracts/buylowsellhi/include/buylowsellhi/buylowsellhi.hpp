@@ -111,8 +111,6 @@ class [[eosio::contract("buylowsellhi")]] buylowsellhi : public contract {
     */
    ACTION deltrademkt( const name& group_name );
 
-   ACTION upgtrademkt( const name& trade_market_name);
-
    private:
       global_singleton    _global;
       global_t            _gstate;

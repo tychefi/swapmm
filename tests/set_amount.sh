@@ -15,4 +15,4 @@ fucli -u $NODE_URL get table $BUYLOWSELLHI_CONTRACT $BUYLOWSELLHI_CONTRACT trade
 
 min_trade_amount="1.00000000 FLON"
 max_trade_amount="300.00000000 FLON"
-fucli -u $NODE_URL push action $BUYLOWSELLHI_CONTRACT setamount '["'$UPDATER'", "'$TRADING_PAIR'", "'"$min_trade_amount"'", "'"$max_trade_amount"'"]' -p $UPDATER@active
+fucli -u $NODE_URL push action $BUYLOWSELLHI_CONTRACT settradeamt '["'$TRADING_PAIR'", "'"$min_trade_amount"'", "'"$max_trade_amount"'"]' -p $UPDATER@active
