@@ -63,8 +63,9 @@ namespace flon {
       typedef eosio::multi_index<"markets"_n, swap_market_t>idx_t;
    };
 
-   static uint32_t get_random_range(uint32_t min, uint32_t max, uint32_t rand) {
+   static int64_t get_random_range(int64_t min, int64_t max, int64_t rand) {
       ASSERT(max > min);
+      ASSERT(rand >= 0);
       if (max == min)
          return max;
       return min + rand % (max - min + 1);
@@ -239,7 +240,7 @@ namespace flon {
       else
          left_ratio = left_ratio_sideways;
       bool is_left_side = uint32_t(left_ratio * 10000'0000) % 10000'0000 < rand % 10000'0000;
-      auto trading_left_amount = get_random_range( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount, rand );
+      int64_t trading_left_amount = get_random_range( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount, rand );
 
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
 
