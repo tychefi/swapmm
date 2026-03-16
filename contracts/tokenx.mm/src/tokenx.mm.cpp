@@ -316,8 +316,6 @@ namespace flon {
          std::string swap_memo = "swap:" + min_received.to_string() + ":" + bot_market.trade_pair_name.to_string();
          TRANSFER(input_contract, bot, _gstate.dex_contract, input_quantity, swap_memo)
 
-         // TODO: after swap: add received_asset to _gstate.right_total_quant and _gstate.right_balance
-         // const asset& input_quantity, const asset& bot_balance_before,
          afterswap_action act{ get_self(), { {get_self(), "active"_n} } };
          act.send( bot, bot_market.trade_pair_name, side, input_quantity, bot_received_before );
     }
