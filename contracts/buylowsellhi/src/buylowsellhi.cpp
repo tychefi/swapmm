@@ -29,7 +29,6 @@ namespace flon {
    }
 
    void buylowsellhi::settrademkt(  name trade_market_name,
-                                    bool paused,
                                     double target_price,
                                     asset min_trade_amount,
                                     asset max_trade_amount,
@@ -40,13 +39,16 @@ namespace flon {
 
       CHECKC( min_trade_amount.symbol == max_trade_amount.symbol, err::PARAM_ERROR, "min and max trade amount symbol mismatch" )
       CHECKC( min_trade_amount.amount <= max_trade_amount.amount, err::PARAM_ERROR, "min trade amount can not be greater than max trade amount" )
+      CHECKC( market_itr->min_trade_amount.amount > 0, err::PARAM_ERROR, "invalid market min trade amount" )
+      CHECKC( target_price > 0, err::PARAM_ERROR, "invalid market target price" )
 
+      
       auto markets = trade_market_t::idx_t( get_self(), get_self().value );
       auto itr = markets.find( trade_market_name.value );
       if ( itr == markets.end() ) {
          markets.emplace( auth_admin, [&] (auto& row) {
             row.trade_market_name   = trade_market_name;
-            row.paused              = paused;
+            row.paused              = true;
             row.target_price        = target_price;
             row.min_trade_amount    = min_trade_amount;
             row.max_trade_amount    = max_trade_amount;
@@ -57,7 +59,6 @@ namespace flon {
          } );
       } else {
          markets.modify( itr, auth_admin, [&] (auto& row) {
-            row.paused              = paused;
             row.target_price        = target_price;
             row.min_trade_amount    = min_trade_amount;
             row.max_trade_amount    = max_trade_amount;

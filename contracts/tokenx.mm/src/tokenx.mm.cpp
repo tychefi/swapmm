@@ -137,7 +137,7 @@ namespace flon {
       auto admin = require_admin_auth();
 
       CHECKC( trade_pair_name.value != 0, err::PARAM_ERROR, "invalid trade pair name" )
-      CHECKC( is_account(fund_account), err::PARAM_ERROR, "fund account not existed" )
+      CHECKC( is_account(fund_account), err::PARAM_ERROR, "fund account not existing" )
       CHECKC( bot_group_name.value != 0, err::PARAM_ERROR, "invalid bot group name" )
 
       auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
@@ -145,7 +145,7 @@ namespace flon {
       if (bot_market_itr == bot_markets.end()) {
          auto swap_markets = swap_market_t::idx_t( _gstate.dex_contract, _gstate.dex_contract.value );
          auto swap_market_itr = swap_markets.find( trade_pair_name.value );
-         CHECKC( swap_market_itr != swap_markets.end(), err::RECORD_NOT_FOUND, "swap market not existed: " + trade_pair_name.to_string() )
+         CHECKC( swap_market_itr != swap_markets.end(), err::RECORD_NOT_FOUND, "swap market not existing: " + trade_pair_name.to_string() )
 
          const auto& left_contract = swap_market_itr->left_pool_quant.contract;
          const auto& left_symbol = swap_market_itr->left_pool_quant.quantity.symbol;
@@ -174,36 +174,27 @@ namespace flon {
       require_auth(bot);
       bot_market_t::idx_t bot_markets( get_self(), get_self().value );
       auto bot_market_itr = bot_markets.find(trade_pair_name.value);
-      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existing: " + trade_pair_name.to_string() )
 
 
       // contract name: buylowsellhi = 4520798682350377696
       auto markets = trade_market_t::idx_t( name(4520798682350377696), 4520798682350377696 );
       auto market_itr = markets.find(bot_market_itr->trade_pair_name.value);
-      CHECKC( market_itr != markets.end(), err::RECORD_NOT_FOUND, "market not existed: " + bot_market_itr->trade_pair_name.to_string() )
-      CHECKC( market_itr->target_price > 0, err::STATUS_ERROR, "invalid market target price" )
+      CHECKC( market_itr != markets.end(), err::RECORD_NOT_FOUND, "market not existing: " + bot_market_itr->trade_pair_name.to_string() )
       CHECKC( market_itr->min_trade_amount.symbol == bot_market_itr->left_pool.balance.quantity.symbol,
          err::STATUS_ERROR, "left pool symbol mismatch with min_trade_amount.symbol" )
-      CHECKC( market_itr->max_trade_amount.symbol == bot_market_itr->left_pool.balance.quantity.symbol,
-         err::STATUS_ERROR, "left pool symbol mismatch with max_trade_amount.symbol" )
-      CHECKC( market_itr->min_trade_amount <= market_itr->max_trade_amount,
-         err::STATUS_ERROR, "min trade amount can not less than max trade amount" )
-      CHECKC( market_itr->min_trade_amount.amount > 0,
-         err::STATUS_ERROR, "invalid market min trade amount" )
-      CHECKC( market_itr->max_slippage >= 0 && market_itr->max_slippage < 1,
-         err::STATUS_ERROR, "invalid market max slippage" )
 
       CHECKC( !market_itr->paused, err::STATUS_ERROR, "market is paused: " + bot_market_itr->trade_pair_name.to_string() )
 
       auto bot_groups = bot_group_t::idx_t( _gstate.bot_mgr_contract, _gstate.bot_mgr_contract.value );
       auto bot_group_itr = bot_groups.find(bot_market_itr->bot_group_name.value);
-      CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + bot_market_itr->bot_group_name.to_string() )
+      CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existing: " + bot_market_itr->bot_group_name.to_string() )
       CHECKC( bot_group_itr->bots.size() > 0, err::STATUS_ERROR, "no bot in bot group: " + bot_market_itr->bot_group_name.to_string() )
-      CHECKC( bot_group_itr->bots.count(bot) > 0, err::RECORD_NOT_FOUND, "bot not existed in group: " + bot_market_itr->bot_group_name.to_string() )
+      CHECKC( bot_group_itr->bots.count(bot) > 0, err::RECORD_NOT_FOUND, "bot not existing in group: " + bot_market_itr->bot_group_name.to_string() )
 
       auto swap_markets = swap_market_t::idx_t( _gstate.dex_contract, _gstate.dex_contract.value );
       auto swap_market_itr = swap_markets.find( bot_market_itr->trade_pair_name.value );
-      CHECKC( swap_market_itr != swap_markets.end(), err::RECORD_NOT_FOUND, "swap market not existed: " + bot_market_itr->trade_pair_name.to_string() )
+      CHECKC( swap_market_itr != swap_markets.end(), err::RECORD_NOT_FOUND, "swap market not existing: " + bot_market_itr->trade_pair_name.to_string() )
       CHECKC( swap_market_itr->left_pool_quant.contract == bot_market_itr->left_pool.balance.contract,
          err::PARAM_ERROR, "left pool token contract mismatch" )
       CHECKC( swap_market_itr->left_pool_quant.quantity.symbol == bot_market_itr->left_pool.balance.quantity.symbol,
@@ -219,7 +210,6 @@ namespace flon {
       // int64_t right_pool_amount = swap_market_itr->right_pool_quant.quantity.amount;
       // double right_to_left_ratio = (double)right_pool_amount / left_pool_amount;
       double left_price = calc_price(swap_market_itr->left_pool_quant.quantity, swap_market_itr->right_pool_quant.quantity);
-
       CHECKC( left_price > 0, err::STATUS_ERROR, "invalid market actual price" )
 
       auto rand = get_random();
@@ -339,7 +329,7 @@ namespace flon {
 
          auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
          auto bot_market_itr = bot_markets.find(trade_pair_name.value);
-         CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+         CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existing: " + trade_pair_name.to_string() )
          bot_markets.modify( bot_market_itr, same_payer, [&] (auto& row) {
             if (token_contract == row.left_pool.balance.contract && quant.symbol == row.left_pool.balance.quantity.symbol) {
                row.left_pool.balance.quantity += quant;
@@ -360,7 +350,7 @@ namespace flon {
 
       auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
       auto bot_market_itr = bot_markets.find(trade_pair_name.value);
-      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existing: " + trade_pair_name.to_string() )
 
 
       if (side != LEFT_SIDE && side != RIGHT_SIDE) {
@@ -398,7 +388,7 @@ namespace flon {
 
       auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
       auto bot_market_itr = bot_markets.find(trade_pair_name.value);
-      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existing: " + trade_pair_name.to_string() )
 
       CHECKC( left_pool_balance.symbol == bot_market_itr->left_pool.balance.quantity.symbol, err::PARAM_ERROR, "left pool balance symbol mismatch" )
       CHECKC( left_pool_total.symbol == bot_market_itr->left_pool.balance.quantity.symbol, err::PARAM_ERROR, "left pool total symbol mismatch" )
@@ -419,11 +409,11 @@ namespace flon {
 
       auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
       auto bot_market_itr = bot_markets.find(trade_pair_name.value);
-      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existing: " + trade_pair_name.to_string() )
 
       auto bot_groups = bot_group_t::idx_t( _gstate.bot_mgr_contract, _gstate.bot_mgr_contract.value );
       auto bot_group_itr = bot_groups.find(bot_market_itr->bot_group_name.value);
-      CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existed: " + bot_market_itr->bot_group_name.to_string() )
+      CHECKC( bot_group_itr != bot_groups.end(), err::RECORD_NOT_FOUND, "bot group not existing: " + bot_market_itr->bot_group_name.to_string() )
 
       const auto& left_symbol = bot_market_itr->left_pool.balance.quantity.symbol;
       const auto& right_symbol = bot_market_itr->right_pool.balance.quantity.symbol;
@@ -453,7 +443,7 @@ namespace flon {
 
       auto bot_markets = bot_market_t::idx_t( get_self(), get_self().value );
       auto bot_market_itr = bot_markets.find(trade_pair_name.value);
-      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existed: " + trade_pair_name.to_string() )
+      CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existing: " + trade_pair_name.to_string() )
       bot_markets.modify( bot_market_itr, same_payer, [&] (auto& row) {
          if (quantity.contract == row.left_pool.balance.contract && quantity.quantity.symbol == row.left_pool.balance.quantity.symbol) {
             CHECKC( quantity.quantity <= row.left_pool.balance.quantity, err::PARAM_ERROR,
