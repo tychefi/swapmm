@@ -57,7 +57,6 @@ class [[eosio::contract("buylowsellhi")]] buylowsellhi : public contract {
     * @param updaters Set of updater account names.
     */
    ACTION settrademkt( name         trade_market_name,
-                       bool         paused,
                        double       target_price,
                        asset        min_trade_amount,
                        asset        max_trade_amount,
