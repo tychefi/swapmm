@@ -64,7 +64,7 @@ namespace flon {
    };
 
    static int64_t get_random_range(int64_t min, int64_t max, int64_t rand) {
-      ASSERT(max > min);
+      ASSERT(max >= min);
       ASSERT(rand >= 0);
       if (max == min)
          return max;
@@ -219,17 +219,17 @@ namespace flon {
       CHECKC( market_itr->fluctuation_ratio >= 0 && market_itr->fluctuation_ratio <= 1, err::PARAM_ERROR, "invalid fluctuation ratio" )
       double min_sideways_price = market_itr->target_price * (1 - market_itr->fluctuation_ratio );
       double max_sideways_price = market_itr->target_price * (1 + market_itr->fluctuation_ratio );
-      constexpr double left_ratio_upward     = 0.9; // 90% chance to buy when price is low
-      constexpr double left_ratio_downward   = 0.1; // 10% chance to sell when price is high
-      constexpr double left_ratio_sideways   = 0.5; // 50% chance to hold when price is stable
-      double left_ratio = 0;
-      if (left_price < min_sideways_price)
-         left_ratio = left_ratio_upward;
-      else if (left_price > max_sideways_price)
-         left_ratio = left_ratio_downward;
-      else
-         left_ratio = left_ratio_sideways;
-      bool is_left_side = uint32_t(left_ratio * 10000'0000) % 10000'0000 < rand % 10000'0000;
+      bool is_left_side = false;
+      if (left_price < min_sideways_price) {
+         // Price is below the target band: buy the left asset with right-side funds to lift price.
+         is_left_side = false;
+      } else if (left_price > max_sideways_price) {
+         // Price is above the target band: sell the left asset to push price back down.
+         is_left_side = true;
+      } else {
+         // Inside the target band, keep balanced two-sided market making.
+         is_left_side = rand % 2 == 0;
+      }
       int64_t trading_left_amount = get_random_range( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount, rand );
 
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
