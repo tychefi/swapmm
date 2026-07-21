@@ -65,8 +65,6 @@ fi
 DSR_REPO=""
 if [[ -n "${GPUS_DSR_REPO+x}" ]]; then
   DSR_REPO="$GPUS_DSR_REPO"
-elif [[ -n "$PREFIX" ]]; then
-  DSR_REPO="${PREFIX%-}-docs"
 fi
 
 DSR_ENABLED=0
@@ -100,7 +98,6 @@ esac
 VALIDATE=1
 RUN_TESTS=0
 NOTE="${GPUS_DSR_NOTE:-}"
-DSR_AUTO_SUMMARY="${GPUS_DSR_AUTO_SUMMARY:-1}"
 COMMIT_MESSAGE=""
 LLM_MESSAGE="${GPUS_LLM_MESSAGE:-0}"
 LLM_MAX_DIFF_CHARS="${GPUS_LLM_MAX_DIFF_CHARS:-12000}"
@@ -109,7 +106,7 @@ TARGET_REPOS=()
 usage() {
   cat <<'EOF'
 Usage:
-  ./gpush [options] [repo ...]
+  ./gpus [options] [repo ...]
 
 Options:
   -y, --yes              Skip confirmation prompt.
@@ -118,15 +115,15 @@ Options:
       --push             Push committed repos to origin/<branch>.
       --no-push          Commit locally but do not push.
       --no-validate      Skip git diff --check validation.
-      --run-tests        Also run lightweight repo tests when local tools exist.
+      --run-tests        Also run lightweight build/script checks when local tools exist.
       --llm-message      Generate commit message from local diffs with an LLM.
-  -m, --message TEXT     Git commit message. Default: chore: gpush submit YYYY-MM-DD
+  -m, --message TEXT     Git commit message. Default: chore: gpus submit YYYY-MM-DD
   -h, --help             Show this help.
 
 Repo filter:
   Optional repo names restrict the submit sweep to those top-level repos.
   Prefix filtering is optional and configured with GPUS_PREFIX.
-  GPUS_PREFIX=szt and GPUS_PREFIX=szt- both match szt-* repos.
+  GPUS_PREFIX may include or omit a trailing hyphen.
   By default, no prefix is required. If no child git repos exist, the current
   repo is selected.
   Multiple repos are supported. Paths are normalized to their basename.
@@ -152,17 +149,17 @@ LLM commit message:
   -m/--message always wins over the LLM.
   Custom command: GPUS_COMMIT_MESSAGE_CMD receives the prompt on stdin.
   OpenAI-compatible envs: GPUS_LLM_BASE_URL, GPUS_LLM_API_KEY, GPUS_LLM_MODEL.
-  DSK_API_KEY, VIDEOWORKER_LLM_* and OPENAI_API_KEY are also used as fallbacks.
+  OPENAI_API_KEY is also used as a fallback.
 
 Examples:
-  ./gpush
-  ./gpush merchant-webui
-  GPUS_PREFIX=szt ./gpush
-  ./gpush --llm-message
-  ./gpush --no-push
-  GPUS_PUSH=0 ./gpush
-  ./gpush --confirm
-  ./gpush --dry-run
+  ./gpus
+  ./gpus swapmm
+  GPUS_PREFIX=contract ./gpus
+  ./gpus --llm-message
+  ./gpus --no-push
+  GPUS_PUSH=0 ./gpus
+  ./gpus --confirm
+  ./gpus --dry-run
 EOF
 }
 
@@ -286,8 +283,8 @@ if [[ ${#TARGET_REPOS[@]} -gt 0 ]]; then
         selected_repos+=("$target_repo")
       fi
     else
-      echo "[gpush] ERROR: repo '$target_repo' was not found under $ROOT_DIR." >&2
-      echo "[gpush] available repos: ${repos[*]}" >&2
+      echo "[gpus] ERROR: repo '$target_repo' was not found under $ROOT_DIR." >&2
+      echo "[gpus] available repos: ${repos[*]}" >&2
       exit 2
     fi
   done
@@ -371,7 +368,7 @@ You are generating one git commit message for a multi-repo submit.
 
 Rules:
 - Return exactly one commit subject line.
-- Use Conventional Commits style, for example: feat: add voice controls
+- Use Conventional Commits style, for example: fix: validate contract trade parameters
 - Prefer concise Chinese if the changed code or note is Chinese.
 - Keep it under 72 characters when possible.
 - Do not use markdown, quotes, bullets, or explanations.
@@ -436,19 +433,15 @@ import urllib.request
 prompt_path = sys.argv[1]
 base_url = (
     os.getenv("GPUS_LLM_BASE_URL")
-    or os.getenv("VIDEOWORKER_LLM_BASE_URL")
     or ("https://api.openai.com/v1/chat/completions" if os.getenv("OPENAI_API_KEY") else "")
 )
 api_key = (
     os.getenv("GPUS_LLM_API_KEY")
-    or os.getenv("DSK_API_KEY")
-    or os.getenv("VIDEOWORKER_LLM_API_KEY")
     or os.getenv("OPENAI_API_KEY")
     or ""
 )
 model = (
     os.getenv("GPUS_LLM_MODEL")
-    or os.getenv("VIDEOWORKER_LLM_MODEL")
     or ("gpt-4.1-mini" if os.getenv("OPENAI_API_KEY") else "")
 )
 
@@ -503,7 +496,7 @@ PY
 
 generate_llm_commit_message() {
   local prompt_file generated
-  prompt_file="$(mktemp "${TMPDIR:-/tmp}/gpush-commit-message.XXXXXX")"
+  prompt_file="$(mktemp "${TMPDIR:-/tmp}/gpus-commit-message.XXXXXX")"
   build_commit_message_prompt > "$prompt_file"
 
   generated="$(llm_commit_message_from_command "$prompt_file" || true)"
@@ -549,18 +542,18 @@ classify_commit_summary() {
   files="$3"
   text="$(printf '%s %s %s' "$repo" "$subject" "$files")"
 
-  if [[ "$text" == *"VideoWorker"* || "$text" == *"videoworker"* || "$text" == *"video-worker"* || "$text" == *"ContentList"* || "$text" == *"智能混剪"* ]]; then
-    echo "视频工坊与智能混剪"
-  elif [[ "$text" == *"Material"* || "$text" == *"material"* || "$text" == *"素材"* ]]; then
-    echo "素材库与素材管理"
-  elif [[ "$text" == *"digital"* || "$text" == *"数字人"* ]]; then
-    echo "数字人能力"
-  elif [[ "$text" == *"deploy"* || "$text" == *"nginx"* || "$text" == *"compose"* || "$text" == *"部署"* ]]; then
-    echo "部署与运行配置"
+  if [[ "$text" == *"contracts/"* || "$text" == *".cpp"* || "$text" == *".hpp"* || "$text" == *"contract"* || "$text" == *"合约"* ]]; then
+    echo "智能合约"
+  elif [[ "$text" == *"CMakeLists.txt"* || "$text" == *"build"* || "$text" == *"scripts/"* || "$text" == *"CMake"* ]]; then
+    echo "构建与脚本"
+  elif [[ "$text" == *"tests/"* || "$text" == *"test"* || "$text" == *"测试"* ]]; then
+    echo "测试与验证"
   elif [[ "$text" == *"DSR"* || "$repo" == "$DSR_REPO" ]]; then
     echo "项目文档"
+  elif [[ "$text" == *"docs/"* || "$text" == *".md"* || "$text" == *"文档"* ]]; then
+    echo "项目文档"
   else
-    echo "平台功能与工程修复"
+    echo "工程维护"
   fi
 }
 
@@ -604,9 +597,9 @@ build_dsr_section_from_commits() {
       echo "- 本轮按参数跳过 \`git diff --check\`。"
     fi
     if [[ "$RUN_TESTS" -eq 1 ]]; then
-      echo "- 已按本地工具可用性执行 \`go test ./...\` / \`npm run build\`。"
+      echo "- 已按本地工具可用性执行 CMake 构建或 shell 语法检查。"
     else
-      echo "- 未由 \`gpush\` 执行本地 Go/npm 测试；以提交前已完成的人工或环境验证为准。"
+      echo "- 未由 \`gpus\` 执行本地构建或脚本检查；以提交前已完成的人工或环境验证为准。"
     fi
     echo
     echo "#### 涉及仓库"
@@ -616,34 +609,34 @@ build_dsr_section_from_commits() {
   } > "$section_file"
 }
 
-echo "[gpush] branch safety: require $TARGET_BRANCH -> $TARGET_UPSTREAM"
+echo "[gpus] branch safety: require $TARGET_BRANCH -> $TARGET_UPSTREAM"
 branch_errors=0
 for repo in "${branch_check_repos[@]}"; do
   current_branch="$(repo_current_branch "$repo")"
   upstream_branch="$(repo_upstream "$repo")"
 
   if [[ "$current_branch" != "$TARGET_BRANCH" ]]; then
-    echo "[gpush] ERROR: $repo is on '${current_branch:-detached}', expected '$TARGET_BRANCH'." >&2
+    echo "[gpus] ERROR: $repo is on '${current_branch:-detached}', expected '$TARGET_BRANCH'." >&2
     branch_errors=1
     continue
   fi
 
   if [[ "$upstream_branch" != "$TARGET_UPSTREAM" ]]; then
-    echo "[gpush] ERROR: $repo upstream is '${upstream_branch:-unset}', expected '$TARGET_UPSTREAM'." >&2
+    echo "[gpus] ERROR: $repo upstream is '${upstream_branch:-unset}', expected '$TARGET_UPSTREAM'." >&2
     branch_errors=1
   fi
 done
 
 if [[ "$branch_errors" -ne 0 ]]; then
-  echo "[gpush] abort: fix branch/upstream state before submitting." >&2
+  echo "[gpus] abort: fix branch/upstream state before submitting." >&2
   exit 1
 fi
 
-echo "[gpush] workspace: $ROOT_DIR"
+echo "[gpus] workspace: $ROOT_DIR"
 if [[ ${#TARGET_REPOS[@]} -gt 0 ]]; then
-  echo "[gpush] target repos: ${selected_repos[*]}"
+  echo "[gpus] target repos: ${selected_repos[*]}"
 fi
-echo "[gpush] scanning repos with local changes or ahead commits"
+echo "[gpus] scanning repos with local changes or ahead commits"
 
 dirty_repos=()
 ahead_repos=()
@@ -672,36 +665,36 @@ done
 if [[ ${#dirty_repos[@]} -eq 0 ]]; then
   if [[ ${#ahead_repos[@]} -gt 0 ]]; then
     echo
-    echo "[gpush] local commits ahead of upstream: ${ahead_repos[*]}"
+    echo "[gpus] local commits ahead of upstream: ${ahead_repos[*]}"
     if [[ "$PUSH" -eq 1 ]]; then
       echo
-      echo "[gpush] push phase"
+      echo "[gpus] push phase"
       for repo in "${ahead_repos[@]}"; do
         echo
         echo "== $repo =="
         GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$GPUS_GIT_SSH_COMMAND" git -C "$(repo_path "$repo")" push origin "$TARGET_BRANCH"
       done
       echo
-      echo "[gpush] final status for pushed repos"
+      echo "[gpus] final status for pushed repos"
       for repo in "${ahead_repos[@]}"; do
         echo
         echo "== $repo =="
         repo_status "$repo"
       done
       echo
-      echo "[gpush] complete. Pushed ahead repos: ${ahead_repos[*]}"
+      echo "[gpus] complete. Pushed ahead repos: ${ahead_repos[*]}"
     else
-      echo "[gpush] push disabled; ahead commits were not pushed."
+      echo "[gpus] push disabled; ahead commits were not pushed."
     fi
     exit 0
   fi
-  echo "[gpush] no changed repos; DSR, commit, and push skipped."
+  echo "[gpus] no changed repos; DSR, commit, and push skipped."
   exit 0
 fi
 
 if [[ "$VALIDATE" -eq 1 ]]; then
   echo
-  echo "[gpush] validation: git diff --check"
+  echo "[gpus] validation: git diff --check"
   for repo in "${dirty_repos[@]}"; do
     echo "== $repo =="
     git -C "$(repo_path "$repo")" diff --check
@@ -710,50 +703,55 @@ fi
 
 if [[ "$RUN_TESTS" -eq 1 ]]; then
   echo
-  echo "[gpush] optional local tests"
+  echo "[gpus] optional local checks"
   for repo in "${dirty_repos[@]}"; do
     repo_dir="$(repo_path "$repo")"
     files="$(repo_changed_files "$repo")"
-    if echo "$files" | grep -Eq '\.go$' && command -v go >/dev/null 2>&1; then
-      echo "== $repo: go test ./... =="
-      (cd "$repo_dir" && go test ./...)
+    if echo "$files" | grep -Eq '(^|/)(CMakeLists\.txt|build\.sh)$|^contracts/|^version/'; then
+      if [[ -x "$repo_dir/build.sh" ]]; then
+        echo "== $repo: ./build.sh -y =="
+        (cd "$repo_dir" && CMAKE_OPTIONS="${CMAKE_OPTIONS:-}" CMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:-}" MAKE_TARGET="${MAKE_TARGET:-}" ./build.sh -y)
+      elif [[ -f "$repo_dir/CMakeLists.txt" ]] && command -v cmake >/dev/null 2>&1; then
+        echo "== $repo: cmake --build build =="
+        (cd "$repo_dir" && cmake --build build)
+      fi
     fi
-    if [[ -f "$repo_dir/package.json" ]] \
-      && echo "$files" | grep -Eq '\.(ts|tsx|js|jsx|json|css)$' \
-      && command -v npm >/dev/null 2>&1 \
-      && grep -q '"build"' "$repo_dir/package.json"; then
-      echo "== $repo: npm run build =="
-      (cd "$repo_dir" && npm run build)
-    fi
+    while IFS= read -r file; do
+      [[ -f "$repo_dir/$file" ]] || continue
+      if [[ "$file" == *.sh ]] || head -n 1 "$repo_dir/$file" | grep -Eq '^#!.*bash'; then
+        echo "== $repo: bash -n $file =="
+        bash -n "$repo_dir/$file"
+      fi
+    done <<< "$files"
   done
 fi
 
 if [[ -z "$COMMIT_MESSAGE" ]] && is_truthy "$LLM_MESSAGE"; then
   echo
-  echo "[gpush] commit message: generating with LLM"
+  echo "[gpus] commit message: generating with LLM"
   generated_message="$(generate_llm_commit_message || true)"
   if [[ -n "$generated_message" ]]; then
     COMMIT_MESSAGE="$generated_message"
   else
-    echo "[gpush] WARN: LLM commit message unavailable; falling back to default." >&2
+    echo "[gpus] WARN: LLM commit message unavailable; falling back to default." >&2
   fi
 fi
 
 if [[ -z "$COMMIT_MESSAGE" ]]; then
-  COMMIT_MESSAGE="chore: gpush submit $TODAY"
+  COMMIT_MESSAGE="chore: gpus submit $TODAY"
 fi
 
 echo
-echo "[gpush] commit message: $COMMIT_MESSAGE"
+echo "[gpus] commit message: $COMMIT_MESSAGE"
 if [[ "$PUSH" -eq 1 ]]; then
-  echo "[gpush] push: enabled"
+  echo "[gpus] push: enabled"
 else
-  echo "[gpush] push: disabled"
+  echo "[gpus] push: disabled"
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo
-  echo "[gpush] dry-run complete; no files changed."
+  echo "[gpus] dry-run complete; no files changed."
   exit 0
 fi
 
@@ -772,12 +770,12 @@ if [[ "$YES" -ne 1 ]]; then
     case "$answer" in
       y|Y|yes|YES) ;;
       *)
-        echo "[gpush] aborted."
+        echo "[gpus] aborted."
         exit 1
         ;;
     esac
   else
-    echo "[gpush] non-interactive run requires GPUS_AUTO_CONFIRM=1 or --yes." >&2
+    echo "[gpus] non-interactive run requires GPUS_AUTO_CONFIRM=1 or --yes." >&2
     exit 1
   fi
 fi
@@ -785,7 +783,7 @@ fi
 repos_to_commit=("${dirty_repos[@]}")
 
 echo
-echo "[gpush] commit phase"
+echo "[gpus] commit phase"
 committed_repos=()
 committed_hashes=()
 for repo in "${repos_to_commit[@]}"; do
@@ -797,7 +795,7 @@ for repo in "${repos_to_commit[@]}"; do
   echo "== $repo =="
   git -C "$repo_dir" add -A
   if git -C "$repo_dir" diff --cached --quiet; then
-    echo "[gpush] no staged changes after add; skipped."
+    echo "[gpus] no staged changes after add; skipped."
     continue
   fi
   GIT_EDITOR=: git -C "$repo_dir" -c commit.gpgsign=false commit -m "$COMMIT_MESSAGE"
@@ -806,13 +804,13 @@ for repo in "${repos_to_commit[@]}"; do
 done
 
 if [[ ${#committed_repos[@]} -eq 0 ]]; then
-  echo "[gpush] no commits were created."
+  echo "[gpus] no commits were created."
   exit 0
 fi
 
 if [[ "$PUSH" -eq 1 ]]; then
   echo
-  echo "[gpush] push phase"
+  echo "[gpus] push phase"
   for repo in "${committed_repos[@]}"; do
     echo
     echo "== $repo =="
@@ -821,7 +819,7 @@ if [[ "$PUSH" -eq 1 ]]; then
 fi
 
 if [[ "$DSR_ENABLED" -eq 1 ]]; then
-  section_file="$(mktemp "${TMPDIR:-/tmp}/gpush-dsr.XXXXXX")"
+  section_file="$(mktemp "${TMPDIR:-/tmp}/gpus-dsr.XXXXXX")"
   build_dsr_section_from_commits "$section_file"
 
   mkdir -p "$DSR_DIR"
@@ -836,7 +834,7 @@ if [[ "$DSR_ENABLED" -eq 1 ]]; then
   rm -f "$section_file"
 
   echo
-  echo "[gpush] DSR generated from commit logs -> $DSR_FILE"
+  echo "[gpus] DSR generated from commit logs -> $DSR_FILE"
   if repo_dirty "$DSR_REPO"; then
     dsr_repo_dir="$(repo_path "$DSR_REPO")"
     echo
@@ -851,16 +849,16 @@ if [[ "$DSR_ENABLED" -eq 1 ]]; then
         GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$GPUS_GIT_SSH_COMMAND" git -C "$dsr_repo_dir" push origin "$TARGET_BRANCH"
       fi
     else
-      echo "[gpush] no staged DSR changes after add; skipped."
+      echo "[gpus] no staged DSR changes after add; skipped."
     fi
   fi
 else
   echo
-  echo "[gpush] DSR disabled; set GPUS_DSR_REPO to enable DSR updates."
+  echo "[gpus] DSR disabled; set GPUS_DSR_REPO to enable DSR updates."
 fi
 
 echo
-echo "[gpush] final status for committed repos"
+echo "[gpus] final status for committed repos"
 for repo in "${committed_repos[@]}"; do
   echo
   echo "== $repo =="
@@ -868,4 +866,4 @@ for repo in "${committed_repos[@]}"; do
 done
 
 echo
-echo "[gpush] complete. Committed repos: ${committed_repos[*]}"
+echo "[gpus] complete. Committed repos: ${committed_repos[*]}"

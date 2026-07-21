@@ -7,11 +7,12 @@ TARGET_BRANCH="${GPUL_BRANCH:-dev}"
 TARGET_UPSTREAM="origin/$TARGET_BRANCH"
 DRY_RUN=0
 ALLOW_DIRTY=0
+BRANCH_SET=0
 
 usage() {
   cat <<'EOF'
 Usage:
-  ./gpull [options]
+  ./gpul [options]
 
 Options:
       --branch NAME      Pull this branch. Default: dev.
@@ -21,9 +22,11 @@ Options:
 
 Behavior:
   Finds top-level git repos by prefix, configurable via GPUL_PREFIX.
-  Prefix may be "szt" or "szt-"; both match szt-* repos.
+  Prefix may include or omit a trailing hyphen.
   By default, no prefix is required and all top-level git repos are matched.
+  If no child git repos exist, the current repo is selected.
   Requires each repo to be on the target branch and track origin/<branch>.
+  In single current-repo mode, the default target branch is the current branch.
   Uses git pull --ff-only so no merge commit is created.
   Dirty repos are skipped unless --allow-dirty is set.
 EOF
@@ -88,6 +91,7 @@ while [[ $# -gt 0 ]]; do
         exit 2
       }
       TARGET_UPSTREAM="origin/$TARGET_BRANCH"
+      BRANCH_SET=1
       shift 2
       ;;
     --allow-dirty)
@@ -121,7 +125,11 @@ fi
 while IFS= read -r repo_path; do
   [[ -d "$repo_path/.git" ]] || continue
   repos+=("$(basename "$repo_path")")
- done < <(find "$ROOT_DIR" -mindepth 1 -maxdepth 1 -type d -name "$find_pattern" | sort)
+done < <(find "$ROOT_DIR" -mindepth 1 -maxdepth 1 -type d -name "$find_pattern" | sort)
+
+if [[ ${#repos[@]} -eq 0 && -z "$PREFIX" && -d "$ROOT_DIR/.git" ]]; then
+  repos=(".")
+fi
 
 if [[ ${#repos[@]} -eq 0 ]]; then
   if [[ -n "$PREFIX" ]]; then
@@ -132,20 +140,36 @@ if [[ ${#repos[@]} -eq 0 ]]; then
   exit 1
 fi
 
+if [[ ${#repos[@]} -eq 1 && "${repos[0]}" == "." && -z "${GPUL_BRANCH:-}" && "$BRANCH_SET" -eq 0 ]]; then
+  current_root_branch="$(git -C "$ROOT_DIR" branch --show-current)"
+  if [[ -n "$current_root_branch" ]]; then
+    TARGET_BRANCH="$current_root_branch"
+    TARGET_UPSTREAM="origin/$TARGET_BRANCH"
+  fi
+fi
+
+repo_path() {
+  if [[ "$1" == "." ]]; then
+    printf '%s' "$ROOT_DIR"
+  else
+    printf '%s/%s' "$ROOT_DIR" "$1"
+  fi
+}
+
 repo_current_branch() {
-  git -C "$ROOT_DIR/$1" branch --show-current
+  git -C "$(repo_path "$1")" branch --show-current
 }
 
 repo_upstream() {
-  git -C "$ROOT_DIR/$1" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true
+  git -C "$(repo_path "$1")" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true
 }
 
 repo_dirty() {
-  [[ -n "$(git -C "$ROOT_DIR/$1" status --porcelain)" ]]
+  [[ -n "$(git -C "$(repo_path "$1")" status --porcelain)" ]]
 }
 
-echo "[gpull] workspace: $ROOT_DIR"
-echo "[gpull] target: $TARGET_BRANCH -> $TARGET_UPSTREAM"
+echo "[gpul] workspace: $ROOT_DIR"
+echo "[gpul] target: $TARGET_BRANCH -> $TARGET_UPSTREAM"
 
 pulled_repos=()
 skipped_repos=()
@@ -158,7 +182,7 @@ for repo in "${repos[@]}"; do
   if [[ "$current_branch" != "$TARGET_BRANCH" ]]; then
     echo
     echo "== $repo =="
-    echo "[gpull] skip: current branch is '${current_branch:-detached}', expected '$TARGET_BRANCH'."
+    echo "[gpul] skip: current branch is '${current_branch:-detached}', expected '$TARGET_BRANCH'."
     skipped_repos+=("$repo")
     continue
   fi
@@ -166,7 +190,7 @@ for repo in "${repos[@]}"; do
   if [[ "$upstream_branch" != "$TARGET_UPSTREAM" ]]; then
     echo
     echo "== $repo =="
-    echo "[gpull] skip: upstream is '${upstream_branch:-unset}', expected '$TARGET_UPSTREAM'."
+    echo "[gpul] skip: upstream is '${upstream_branch:-unset}', expected '$TARGET_UPSTREAM'."
     skipped_repos+=("$repo")
     continue
   fi
@@ -174,8 +198,8 @@ for repo in "${repos[@]}"; do
   if [[ "$ALLOW_DIRTY" -ne 1 ]] && repo_dirty "$repo"; then
     echo
     echo "== $repo =="
-    echo "[gpull] skip: local working tree has uncommitted changes."
-    git -C "$ROOT_DIR/$repo" status --short
+    echo "[gpul] skip: local working tree has uncommitted changes."
+    git -C "$(repo_path "$repo")" status --short
     skipped_repos+=("$repo")
     continue
   fi
@@ -183,11 +207,11 @@ for repo in "${repos[@]}"; do
   echo
   echo "== $repo =="
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    git -C "$ROOT_DIR/$repo" fetch --dry-run --prune origin "$TARGET_BRANCH" || failed_repos+=("$repo")
+    git -C "$(repo_path "$repo")" fetch --dry-run --prune origin "$TARGET_BRANCH" || failed_repos+=("$repo")
     continue
   fi
 
-  if git -C "$ROOT_DIR/$repo" pull --ff-only --prune origin "$TARGET_BRANCH"; then
+  if git -C "$(repo_path "$repo")" pull --ff-only --prune origin "$TARGET_BRANCH"; then
     pulled_repos+=("$repo")
   else
     failed_repos+=("$repo")
@@ -195,10 +219,10 @@ for repo in "${repos[@]}"; do
 done
 
 echo
-echo "[gpull] complete"
-[[ ${#pulled_repos[@]} -eq 0 ]] || echo "[gpull] pulled: ${pulled_repos[*]}"
-[[ ${#skipped_repos[@]} -eq 0 ]] || echo "[gpull] skipped: ${skipped_repos[*]}"
-[[ ${#failed_repos[@]} -eq 0 ]] || echo "[gpull] failed: ${failed_repos[*]}"
+echo "[gpul] complete"
+[[ ${#pulled_repos[@]} -eq 0 ]] || echo "[gpul] pulled: ${pulled_repos[*]}"
+[[ ${#skipped_repos[@]} -eq 0 ]] || echo "[gpul] skipped: ${skipped_repos[*]}"
+[[ ${#failed_repos[@]} -eq 0 ]] || echo "[gpul] failed: ${failed_repos[*]}"
 
 if [[ ${#failed_repos[@]} -gt 0 || ${#skipped_repos[@]} -gt 0 ]]; then
   exit 1
