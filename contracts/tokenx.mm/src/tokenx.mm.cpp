@@ -133,6 +133,15 @@ namespace flon {
       return (double)input_amount * price * out_boost / in_boost;
    }
 
+   static int64_t get_input_pool_available(const dex_pool_side_t& input_pool, const name& bot) {
+      const auto& input_contract = input_pool.balance.contract;
+      const auto& input_symbol = input_pool.balance.quantity.symbol;
+
+      asset bot_balance = flon_token::get_balance(input_contract, bot, input_symbol, false);
+      asset available_quantity = input_pool.balance.quantity + bot_balance;
+      return min(input_pool.total_quantity.amount, available_quantity.amount);
+   }
+
    void tokenx_mm::setmarket( const name& trade_pair_name, const name& fund_account, const name& bot_group_name ) {
       auto admin = require_admin_auth();
 
@@ -238,12 +247,32 @@ namespace flon {
          if ( is_left_side ) {
 
             double min_price = left_price * (1 - market_itr->max_slippage);
-            do_trade(side, row, row.left_pool, row.right_pool, min_price, trading_left_amount, bot, bot_group_itr->bots.size());
+            if (row.left_pool.balance.quantity > row.left_pool.total_quantity) {
+               eosio::print("skip trade: ", side, " side fund snapshot invalid, refreshfund required\n");
+               return;
+            }
+            int64_t max_input_amount = get_input_pool_available(row.left_pool, bot);
+            int64_t input_amount = min(trading_left_amount, max_input_amount);
+            if (input_amount <= 0) {
+               eosio::print("skip trade: ", side, " side total quantity is zero\n");
+               return;
+            }
+            do_trade(side, row, row.left_pool, row.right_pool, min_price, input_amount, bot, bot_group_itr->bots.size());
          } else { // right_side
             double price = 1 / left_price;
 
             int64_t input_amount = calc_trade_out(left_price, trading_left_amount, row.left_pool.balance.quantity.symbol,
                         row.right_pool.balance.quantity.symbol);
+            if (row.right_pool.balance.quantity > row.right_pool.total_quantity) {
+               eosio::print("skip trade: ", side, " side fund snapshot invalid, refreshfund required\n");
+               return;
+            }
+            int64_t max_input_amount = get_input_pool_available(row.right_pool, bot);
+            input_amount = min(input_amount, max_input_amount);
+            if (input_amount <= 0) {
+               eosio::print("skip trade: ", side, " side total quantity is zero\n");
+               return;
+            }
             double min_price = price * (1 - market_itr->max_slippage);
             // check(false, "side: " + side.to_string() + ", input_amount: " + std::to_string(input_amount) + ", trading_left_amount: " + std::to_string(trading_left_amount) +
             //    ", price: " + std::to_string(price));
@@ -270,7 +299,9 @@ namespace flon {
          CHECKC( input_quantity <= input_pool.total_quantity, err::PARAM_ERROR,
             side.to_string() + " side calculated input quantity exceed the total quantity" +
             ", input_quantity: " + input_quantity.to_string() + ", total_quantity: " + input_pool.total_quantity.to_string())
-         ASSERT( input_pool_balance <= input_pool.total_quantity )
+         CHECKC( input_pool_balance <= input_pool.total_quantity, err::STATUS_ERROR,
+            side.to_string() + " side fund snapshot invalid, refreshfund required" +
+            ", balance: " + input_pool_balance.to_string() + ", total_quantity: " + input_pool.total_quantity.to_string())
 
          asset bot_input_balance_before = flon_token::get_balance( input_contract, bot, input_symbol, false );
          if ( bot_input_balance_before < input_quantity ) {
@@ -394,6 +425,8 @@ namespace flon {
       CHECKC( left_pool_total.symbol == bot_market_itr->left_pool.balance.quantity.symbol, err::PARAM_ERROR, "left pool total symbol mismatch" )
       CHECKC( right_pool_balance.symbol == bot_market_itr->right_pool.balance.quantity.symbol, err::PARAM_ERROR, "right pool balance symbol mismatch" )
       CHECKC( right_pool_total.symbol == bot_market_itr->right_pool.balance.quantity.symbol, err::PARAM_ERROR, "right pool total symbol mismatch" )
+      CHECKC( left_pool_balance <= left_pool_total, err::PARAM_ERROR, "left pool balance cannot exceed total" )
+      CHECKC( right_pool_balance <= right_pool_total, err::PARAM_ERROR, "right pool balance cannot exceed total" )
 
       bot_markets.modify( bot_market_itr, admin, [&] (auto& row) {
          row.left_pool.balance.quantity = left_pool_balance;
