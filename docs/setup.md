@@ -135,8 +135,9 @@ fucli -u $url transfer $fund_account $tokenx_mm_contract "$deposit_usdt" "init b
 ## 11. Check and Verify
 ```bash
 fucli -u "$url" get table  $tokenx_mm_contract  $tokenx_mm_contract global
+fucli -u "$url" get table  $tokenx_mm_contract  $tokenx_mm_contract schedules -L "$trade_pair" -l 1
 memo=$(od -An -N4 -tu4 /dev/urandom | tr -d ' \n')
-fucli -u "$url" push action "$tokenx_mm_contract" trade '["'"$memo"'"]' -p $bot_admin@trade
+fucli -u "$url" push action "$tokenx_mm_contract" trade '["'${bot_users[0]}'","'$trade_pair'","'$memo'"]' -p ${bot_users[0]}@trade
 ```
 
 ## Setup Complete

@@ -88,6 +88,7 @@ namespace flon {
    }
 
    static uint32_t calc_trade_wait_seconds(uint32_t min_seconds, uint32_t max_seconds, uint32_t rand) {
+      CHECK( min_seconds > 0, "min_trade_seconds must be greater than 0" )
       CHECK( max_seconds >= min_seconds, "max_trade_seconds can not be less than min_trade_seconds" )
       return get_random_range(min_seconds, max_seconds, (rand >> 8) ^ (rand * 2654435761u));
    }
@@ -270,12 +271,14 @@ namespace flon {
 
       auto rand = get_random();
 
-      uint32_t trade_wait_seconds = calc_trade_wait_seconds(market_itr->min_trade_seconds, market_itr->max_trade_seconds, rand);
+      auto schedules = schedule_t::idx_t( get_self(), get_self().value );
+      auto schedule_itr = schedules.find(bot_market_itr->trade_pair_name.value);
       uint32_t now_seconds = current_time_point().sec_since_epoch();
-      uint32_t last_traded_seconds = bot_market_itr->last_traded_at.sec_since_epoch();
-      if (last_traded_seconds > 0 && now_seconds >= last_traded_seconds && now_seconds - last_traded_seconds < trade_wait_seconds) {
-         eosio::print("skip trade: wait for next randomized trade interval\n");
-         return;
+      if (schedule_itr != schedules.end()) {
+         uint32_t last_traded_seconds = schedule_itr->last_traded_at.sec_since_epoch();
+         uint64_t next_trade_seconds = uint64_t(last_traded_seconds) + schedule_itr->random_interval_seconds;
+         CHECKC( last_traded_seconds == 0 || uint64_t(now_seconds) >= next_trade_seconds,
+            err::STATUS_ERROR, "trade interval not reached, next trade at: " + std::to_string(next_trade_seconds) )
       }
 
       // rand_num
@@ -300,6 +303,7 @@ namespace flon {
 
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
 
+      bool trade_sent = false;
       bot_markets.modify( bot_market_itr, same_payer, [&] (auto& row) {
          if ( is_left_side ) {
 
@@ -316,6 +320,7 @@ namespace flon {
                return;
             }
             do_trade(side, row, row.left_pool, row.right_pool, min_price, input_amount, bot, bot_group_itr->bots.size());
+            trade_sent = true;
          } else { // right_side
             double price = 1 / left_price;
 
@@ -336,9 +341,27 @@ namespace flon {
             // check(false, "side: " + side.to_string() + ", input_amount: " + std::to_string(input_amount) + ", trading_left_amount: " + std::to_string(trading_left_amount) +
             //    ", price: " + std::to_string(price));
             do_trade(side, row, row.right_pool, row.left_pool, min_price, input_amount, bot, bot_group_itr->bots.size());
+            trade_sent = true;
          }
          row.last_traded_at = current_time_point();
       } );
+
+      if (trade_sent) {
+         uint32_t next_random_interval = calc_trade_wait_seconds(market_itr->min_trade_seconds, market_itr->max_trade_seconds, rand >> 1);
+         auto schedule_itr_for_update = schedules.find(bot_market_itr->trade_pair_name.value);
+         if (schedule_itr_for_update == schedules.end()) {
+            schedules.emplace( get_self(), [&] (auto& row) {
+               row.trade_pair_name = bot_market_itr->trade_pair_name;
+               row.last_traded_at = current_time_point();
+               row.random_interval_seconds = next_random_interval;
+            } );
+         } else {
+            schedules.modify( schedule_itr_for_update, same_payer, [&] (auto& row) {
+               row.last_traded_at = current_time_point();
+               row.random_interval_seconds = next_random_interval;
+            } );
+         }
+      }
 
    }
 

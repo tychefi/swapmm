@@ -67,6 +67,18 @@ NTBL("global") global_t {
 };
 typedef eosio::singleton< "global"_n, global_t > global_singleton;
 
+NTBL("schedules") schedule_t {
+    name            trade_pair_name;                // Market name
+    time_point      last_traded_at;                 // Last successful trade timestamp
+    uint32_t        random_interval_seconds = 0;    // Random interval required before the next trade
+
+    uint64_t primary_key() const { return trade_pair_name.value; }
+
+    typedef eosio::multi_index< "schedules"_n,  schedule_t> idx_t;
+
+    EOSLIB_SERIALIZE( schedule_t, (trade_pair_name)(last_traded_at)(random_interval_seconds))
+};
+
 NTBL("botmarkets") bot_market_t {
     name            trade_pair_name;                // Market name
     name            fund_account;                   // bot manager contract name

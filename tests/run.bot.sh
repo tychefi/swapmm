@@ -4,6 +4,8 @@
 # Configurations
 tokenx_mm_contract="tokenxmm1111"
 node_url="http://hk-t3.vm.nestar.vip:18888"
+bot="botuser11111"
+trade_pair="flon.usdt"
 interval_min=10      # Minimum interval in seconds
 interval_max=60      # Maximum interval in seconds
 
@@ -23,8 +25,13 @@ while true; do
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     # random nonce
     memo=$RANDOM
-    result=$(fucli -u "$node_url" push action "$tokenx_mm_contract" trade '{"memo":"'$memo'"}' -p "$tokenx_mm_contract@active")
-    [ $? -ne 0 ] && log "ERROR: trade failed and wait for 3 seconds for another try" && sleep 3 && continue
+    result=$(fucli -u "$node_url" push action "$tokenx_mm_contract" trade '{"bot":"'$bot'","trade_pair_name":"'$trade_pair'","memo":"'$memo'"}' -p "$bot@trade")
+    if [ $? -ne 0 ]; then
+        retry_sleep=$(( RANDOM % (interval_max - interval_min + 1) + interval_min ))
+        log "ERROR: trade failed and wait for ${retry_sleep} seconds for another try"
+        sleep "$retry_sleep"
+        continue
+    fi
 
     # Record log
     echo "-----------------------------"
