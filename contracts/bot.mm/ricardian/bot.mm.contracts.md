@@ -1,4 +1,4 @@
-# setadmin
+<h1 class="contract">setadmin</h1>
 
 ---
 spec_version: "0.2.0"
@@ -8,7 +8,7 @@ summary: Set the admin account for the bot.mm contract.
 
 This action sets the admin account.
 
-# setgroup
+<h1 class="contract">setgroup</h1>
 
 ---
 spec_version: "0.2.0"
@@ -18,7 +18,7 @@ summary: Create or update a bot group.
 
 This action sets a bot group.
 
-# addtogroup
+<h1 class="contract">addtogroup</h1>
 
 ---
 spec_version: "0.2.0"
@@ -28,7 +28,7 @@ summary: Add bots to a group.
 
 This action adds bots to a group.
 
-# rmfromgroup
+<h1 class="contract">rmfromgroup</h1>
 
 ---
 spec_version: "0.2.0"
@@ -38,7 +38,7 @@ summary: Remove bots from a group.
 
 This action removes bots from a group.
 
-# setgroupdesc
+<h1 class="contract">setgroupdesc</h1>
 
 ---
 spec_version: "0.2.0"
@@ -48,7 +48,7 @@ summary: Set description for a group.
 
 This action sets the group description.
 
-# deletegroup
+<h1 class="contract">deletegroup</h1>
 
 ---
 spec_version: "0.2.0"
@@ -58,7 +58,7 @@ summary: Delete a bot group.
 
 This action deletes a group.
 
-# version
+<h1 class="contract">version</h1>
 
 ---
 spec_version: "0.2.0"

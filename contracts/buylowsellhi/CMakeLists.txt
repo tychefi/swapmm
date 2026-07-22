@@ -9,3 +9,5 @@ set_target_properties(buylowsellhi
    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
 target_link_libraries(buylowsellhi flon_base)
+
+target_ricardian_directory(buylowsellhi ${CMAKE_CURRENT_SOURCE_DIR}/ricardian)

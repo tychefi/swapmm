@@ -71,6 +71,53 @@ namespace flon {
       return min + rand % (max - min + 1);
    }
 
+   static double clamp_double(double value, double min_value, double max_value) {
+      if (value < min_value) return min_value;
+      if (value > max_value) return max_value;
+      return value;
+   }
+
+   static int64_t get_small_biased_random_range(int64_t min, int64_t max, uint32_t rand) {
+      ASSERT(max >= min);
+      if (max == min) return max;
+
+      int64_t span = max - min;
+      int64_t first = rand % (span + 1);
+      int64_t second = ((rand >> 16) ^ (rand * 1103515245u)) % (span + 1);
+      return min + std::min(first, second);
+   }
+
+   static uint32_t calc_trade_wait_seconds(uint32_t min_seconds, uint32_t max_seconds, uint32_t rand) {
+      CHECK( max_seconds >= min_seconds, "max_trade_seconds can not be less than min_trade_seconds" )
+      return get_random_range(min_seconds, max_seconds, (rand >> 8) ^ (rand * 2654435761u));
+   }
+
+   static uint32_t calc_left_side_probability_bps(double left_price, double target_price, double fluctuation_ratio) {
+      if (target_price <= 0 || fluctuation_ratio <= 0) {
+         return 5000;
+      }
+
+      double band_width = target_price * fluctuation_ratio;
+      if (band_width <= 0) {
+         return 5000;
+      }
+
+      double normalized = (left_price - target_price) / band_width;
+      normalized = clamp_double(normalized, -1.0, 1.0);
+
+      // Above target, bias to left-side input to sell the left asset down. Below target, bias to right-side input.
+      return (uint32_t)clamp_double(5000.0 + normalized * 3500.0, 1500.0, 8500.0);
+   }
+
+   static int64_t calc_depth_limited_input_amount(const asset& input_reserve, double fluctuation_ratio) {
+      CHECK( input_reserve.amount > 0, "invalid dex input reserve" )
+
+      // Limit a single bot trade to a small fraction of pool depth. Smaller configured bands imply smaller per-trade impact.
+      double max_reserve_ratio = clamp_double(fluctuation_ratio * 0.05, 0.0002, 0.002);
+      int64_t depth_limited_amount = (int64_t)((double)input_reserve.amount * max_reserve_ratio);
+      return std::max<int64_t>(1, depth_limited_amount);
+   }
+
    DEFINE_VERSION_CONTRACT_CLASS("tokenx.mm", tokenx_mm)
 
    static uint32_t get_random() {
@@ -223,6 +270,14 @@ namespace flon {
 
       auto rand = get_random();
 
+      uint32_t trade_wait_seconds = calc_trade_wait_seconds(market_itr->min_trade_seconds, market_itr->max_trade_seconds, rand);
+      uint32_t now_seconds = current_time_point().sec_since_epoch();
+      uint32_t last_traded_seconds = bot_market_itr->last_traded_at.sec_since_epoch();
+      if (last_traded_seconds > 0 && now_seconds >= last_traded_seconds && now_seconds - last_traded_seconds < trade_wait_seconds) {
+         eosio::print("skip trade: wait for next randomized trade interval\n");
+         return;
+      }
+
       // rand_num
       // auto chain_modeget_chain_mode()
       CHECKC( market_itr->fluctuation_ratio >= 0 && market_itr->fluctuation_ratio <= 1, err::PARAM_ERROR, "invalid fluctuation ratio" )
@@ -236,10 +291,12 @@ namespace flon {
          // Price is above the target band: sell the left asset to push price back down.
          is_left_side = true;
       } else {
-         // Inside the target band, keep balanced two-sided market making.
-         is_left_side = rand % 2 == 0;
+         // Inside the target band, keep balanced two-sided market making with mean-reversion bias.
+         uint32_t left_side_probability_bps = calc_left_side_probability_bps(left_price, market_itr->target_price, market_itr->fluctuation_ratio);
+         is_left_side = (rand % 10000) < left_side_probability_bps;
       }
-      int64_t trading_left_amount = get_random_range( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount, rand );
+      int64_t trading_left_amount = get_small_biased_random_range( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
+                                                                   rand ^ 0x9e3779b9u );
 
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
 
@@ -252,7 +309,8 @@ namespace flon {
                return;
             }
             int64_t max_input_amount = get_input_pool_available(row.left_pool, bot);
-            int64_t input_amount = min(trading_left_amount, max_input_amount);
+            int64_t depth_limited_amount = calc_depth_limited_input_amount(swap_market_itr->left_pool_quant.quantity, market_itr->fluctuation_ratio);
+            int64_t input_amount = min(min(trading_left_amount, depth_limited_amount), max_input_amount);
             if (input_amount <= 0) {
                eosio::print("skip trade: ", side, " side total quantity is zero\n");
                return;
@@ -268,7 +326,8 @@ namespace flon {
                return;
             }
             int64_t max_input_amount = get_input_pool_available(row.right_pool, bot);
-            input_amount = min(input_amount, max_input_amount);
+            int64_t depth_limited_amount = calc_depth_limited_input_amount(swap_market_itr->right_pool_quant.quantity, market_itr->fluctuation_ratio);
+            input_amount = min(min(input_amount, depth_limited_amount), max_input_amount);
             if (input_amount <= 0) {
                eosio::print("skip trade: ", side, " side total quantity is zero\n");
                return;

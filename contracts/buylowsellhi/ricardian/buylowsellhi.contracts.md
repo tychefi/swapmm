@@ -1,4 +1,4 @@
-# setadmin
+<h1 class="contract">setadmin</h1>
 
 ---
 spec_version: "0.2.0"
@@ -8,7 +8,7 @@ summary: Set the admin account for the buylowsellhi contract.
 
 This action sets the admin account.
 
-# settrademkt
+<h1 class="contract">settrademkt</h1>
 
 ---
 spec_version: "0.2.0"
@@ -18,7 +18,7 @@ summary: Create or update a trade market.
 
 This action creates or updates a trade market with parameters.
 
-# pause
+<h1 class="contract">pause</h1>
 
 ---
 spec_version: "0.2.0"
@@ -28,7 +28,7 @@ summary: Set the pause status of a trade market.
 
 This action pauses or resumes a market.
 
-# setprice
+<h1 class="contract">setprice</h1>
 
 ---
 spec_version: "0.2.0"
@@ -38,7 +38,7 @@ summary: Set the target price for a trade market.
 
 This action sets the target price.
 
-# settradeamt
+<h1 class="contract">settradeamt</h1>
 
 ---
 spec_version: "0.2.0"
@@ -48,7 +48,7 @@ summary: Set min and max trade amounts (admin only).
 
 This action allows admin to set trade amount limits directly.
 
-# setslippage
+<h1 class="contract">setslippage</h1>
 
 ---
 spec_version: "0.2.0"
@@ -58,7 +58,7 @@ summary: Set slippage parameters.
 
 This action sets max slippage and fluctuation ratio.
 
-# setupdaters
+<h1 class="contract">setupdaters</h1>
 
 ---
 spec_version: "0.2.0"
@@ -68,7 +68,7 @@ summary: Set updater accounts for a market.
 
 This action assigns updaters.
 
-# deltrademkt
+<h1 class="contract">deltrademkt</h1>
 
 ---
 spec_version: "0.2.0"
@@ -78,7 +78,7 @@ summary: Delete a trade market.
 
 This action deletes a market.
 
-# version
+<h1 class="contract">version</h1>
 
 ---
 spec_version: "0.2.0"

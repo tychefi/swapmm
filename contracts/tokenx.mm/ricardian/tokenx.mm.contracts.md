@@ -1,4 +1,4 @@
-# setadmin
+<h1 class="contract">setadmin</h1>
 
 ---
 spec_version: "0.2.0"
@@ -8,7 +8,7 @@ summary: Set the admin account for the tokenx.mm contract.
 
 This action sets the admin account.
 
-# cfgbotmgr
+<h1 class="contract">cfgbotmgr</h1>
 
 ---
 spec_version: "0.2.0"
@@ -18,7 +18,7 @@ summary: Set the bot manager contract.
 
 This action configures the bot manager.
 
-# setmarket
+<h1 class="contract">setmarket</h1>
 
 ---
 spec_version: "0.2.0"
@@ -28,7 +28,7 @@ summary: Set up a trading market.
 
 This action sets market parameters.
 
-# trade
+<h1 class="contract">trade</h1>
 
 ---
 spec_version: "0.2.0"
@@ -38,7 +38,7 @@ summary: Execute a trade.
 
 This action performs a trade.
 
-# afterswap
+<h1 class="contract">afterswap</h1>
 
 ---
 spec_version: "0.2.0"
@@ -48,7 +48,7 @@ summary: Handle post-swap operations.
 
 This action handles after swap.
 
-# updatefund
+<h1 class="contract">updatefund</h1>
 
 ---
 spec_version: "0.2.0"
@@ -58,7 +58,7 @@ summary: Update fund balances.
 
 This action updates funds.
 
-# refreshfund
+<h1 class="contract">refreshfund</h1>
 
 ---
 spec_version: "0.2.0"
@@ -68,7 +68,7 @@ summary: Refresh fund data.
 
 This action refreshes funds.
 
-# withdrawfund
+<h1 class="contract">withdrawfund</h1>
 
 ---
 spec_version: "0.2.0"
@@ -78,7 +78,7 @@ summary: Withdraw from fund.
 
 This action withdraws funds.
 
-# version
+<h1 class="contract">version</h1>
 
 ---
 spec_version: "0.2.0"
