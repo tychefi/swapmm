@@ -48,6 +48,16 @@ summary: Set min and max trade amounts (admin only).
 
 This action allows admin to set trade amount limits directly.
 
+<h1 class="contract">settradeint</h1>
+
+---
+spec_version: "0.2.0"
+title: Set Trade Interval
+summary: Set min and max seconds between successful bot trades.
+---
+
+This action allows admin to set trade interval limits directly.
+
 <h1 class="contract">setslippage</h1>
 
 ---

@@ -89,6 +89,14 @@ class [[eosio::contract("buylowsellhi")]] buylowsellhi : public contract {
    ACTION settradeamt( const name& trade_market_name, const asset& min_trade_amount, const asset& max_trade_amount );
 
    /**
+    * @brief Set the minimum and maximum interval between successful bot trades.
+    * @param trade_market_name The name of the trade market to update.
+    * @param min_trade_seconds The minimum interval in seconds.
+    * @param max_trade_seconds The maximum interval in seconds.
+    */
+   ACTION settradeint( const name& trade_market_name, uint32_t min_trade_seconds, uint32_t max_trade_seconds );
+
+   /**
     * @brief Set the slippage parameters for a trade market.
     * @param updater The account requesting the update (must be authorized updater for the market).
     * @param trade_market_name The name of the trade market to update.

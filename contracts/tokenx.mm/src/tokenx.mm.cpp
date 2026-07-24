@@ -87,27 +87,60 @@ namespace flon {
       return min + std::min(first, second);
    }
 
+   static uint32_t mix32(uint32_t value) {
+      value ^= value >> 16;
+      value *= 0x7feb352du;
+      value ^= value >> 15;
+      value *= 0x846ca68bu;
+      value ^= value >> 16;
+      return value;
+   }
+
    static uint32_t calc_trade_wait_seconds(uint32_t min_seconds, uint32_t max_seconds, uint32_t rand) {
       CHECK( min_seconds > 0, "min_trade_seconds must be greater than 0" )
       CHECK( max_seconds >= min_seconds, "max_trade_seconds can not be less than min_trade_seconds" )
       return get_random_range(min_seconds, max_seconds, (rand >> 8) ^ (rand * 2654435761u));
    }
 
-   static uint32_t calc_left_side_probability_bps(double left_price, double target_price, double fluctuation_ratio) {
+   struct side_bias_t {
+      bool     primary_left;
+      uint32_t left_probability_bps;
+   };
+
+   static uint32_t trade_pair_seed(const name& trade_pair_name) {
+      return uint32_t(trade_pair_name.value) ^ uint32_t(trade_pair_name.value >> 32);
+   }
+
+   static side_bias_t calc_sideways_side_bias(double left_price, double target_price, double fluctuation_ratio,
+                                              const name& trade_pair_name, uint32_t now_seconds) {
       if (target_price <= 0 || fluctuation_ratio <= 0) {
-         return 5000;
+         return side_bias_t{ true, 5000 };
       }
 
       double band_width = target_price * fluctuation_ratio;
       if (band_width <= 0) {
-         return 5000;
+         return side_bias_t{ true, 5000 };
       }
 
       double normalized = (left_price - target_price) / band_width;
       normalized = clamp_double(normalized, -1.0, 1.0);
 
-      // Above target, bias to left-side input to sell the left asset down. Below target, bias to right-side input.
-      return (uint32_t)clamp_double(5000.0 + normalized * 3500.0, 1500.0, 8500.0);
+      if (normalized >= 0.30) {
+         return side_bias_t{ true, 9000 };
+      }
+      if (normalized <= -0.30) {
+         return side_bias_t{ false, 1000 };
+      }
+
+      // Keep an intrabar direction preference stable for a 5-minute window.
+      // This avoids repeatedly sweeping both sides of the same candle while still reverting to target.
+      uint32_t segment = now_seconds / 300;
+      uint32_t segment_rand = mix32(trade_pair_seed(trade_pair_name) ^ (segment * 2246822519u));
+      bool primary_left = (segment_rand & 1u) == 0;
+      double segment_bias = primary_left ? 1800.0 : -1800.0;
+      double reversion_bias = normalized * 6000.0;
+      uint32_t left_probability_bps = (uint32_t)clamp_double(5000.0 + segment_bias + reversion_bias, 1200.0, 8800.0);
+      return side_bias_t{ primary_left, left_probability_bps };
    }
 
    static int64_t calc_depth_limited_input_amount(const asset& input_reserve, double fluctuation_ratio) {
@@ -117,6 +150,23 @@ namespace flon {
       double max_reserve_ratio = clamp_double(fluctuation_ratio * 0.05, 0.0002, 0.002);
       int64_t depth_limited_amount = (int64_t)((double)input_reserve.amount * max_reserve_ratio);
       return std::max<int64_t>(1, depth_limited_amount);
+   }
+
+   static int64_t calc_trade_left_amount(int64_t min_amount, int64_t max_amount, uint32_t rand,
+                                         const name& trade_pair_name, uint32_t now_seconds, bool counter_primary_side) {
+      int64_t amount = get_small_biased_random_range(min_amount, max_amount, rand);
+      if (max_amount <= min_amount) return amount;
+
+      int64_t span_amount = amount - min_amount;
+      if (counter_primary_side) {
+         return min_amount + span_amount * 35 / 100;
+      }
+
+      uint32_t segment = now_seconds / 900;
+      uint32_t rhythm_rand = mix32(trade_pair_seed(trade_pair_name) ^ (segment * 3266489917u) ^ (rand >> 7));
+      uint32_t rhythm_bps = 7000 + (rhythm_rand % 6001);
+      int64_t adjusted_span = span_amount * rhythm_bps / 10000;
+      return min(max_amount, min_amount + adjusted_span);
    }
 
    DEFINE_VERSION_CONTRACT_CLASS("tokenx.mm", tokenx_mm)
@@ -287,6 +337,9 @@ namespace flon {
       double min_sideways_price = market_itr->target_price * (1 - market_itr->fluctuation_ratio );
       double max_sideways_price = market_itr->target_price * (1 + market_itr->fluctuation_ratio );
       bool is_left_side = false;
+      bool inside_sideways_band = left_price >= min_sideways_price && left_price <= max_sideways_price;
+      side_bias_t side_bias = calc_sideways_side_bias(left_price, market_itr->target_price, market_itr->fluctuation_ratio,
+                                                      bot_market_itr->trade_pair_name, now_seconds);
       if (left_price < min_sideways_price) {
          // Price is below the target band: buy the left asset with right-side funds to lift price.
          is_left_side = false;
@@ -294,12 +347,13 @@ namespace flon {
          // Price is above the target band: sell the left asset to push price back down.
          is_left_side = true;
       } else {
-         // Inside the target band, keep balanced two-sided market making with mean-reversion bias.
-         uint32_t left_side_probability_bps = calc_left_side_probability_bps(left_price, market_itr->target_price, market_itr->fluctuation_ratio);
-         is_left_side = (rand % 10000) < left_side_probability_bps;
+         // Inside the target band, keep a stable intrabar side preference with mean-reversion bias.
+         is_left_side = (rand % 10000) < side_bias.left_probability_bps;
       }
-      int64_t trading_left_amount = get_small_biased_random_range( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
-                                                                   rand ^ 0x9e3779b9u );
+      bool counter_primary_side = inside_sideways_band && (is_left_side != side_bias.primary_left);
+      int64_t trading_left_amount = calc_trade_left_amount( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
+                                                            rand ^ 0x9e3779b9u, bot_market_itr->trade_pair_name,
+                                                            now_seconds, counter_primary_side );
 
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
 
