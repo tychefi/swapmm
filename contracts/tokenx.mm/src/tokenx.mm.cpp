@@ -12,8 +12,10 @@ namespace flon {
 
    static const name LEFT_SIDE = "left"_n;
    static const name RIGHT_SIDE = "right"_n;
-   static constexpr uint32_t SIDE_SEGMENT_SECONDS = 14400;
+   static constexpr uint32_t TREND_ANCHOR_SECONDS = 1800;
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
+   static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.65;
+   static constexpr double TARGET_DEADBAND_RATIO = 0.04;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -104,30 +106,76 @@ namespace flon {
       return get_random_range(min_seconds, max_seconds, (rand >> 8) ^ (rand * 2654435761u));
    }
 
-   struct side_bias_t {
+   struct market_direction_t {
+      bool     is_left_side;
       bool     primary_left;
+      double   reference_price;
    };
 
    static uint32_t trade_pair_seed(const name& trade_pair_name) {
       return uint32_t(trade_pair_name.value) ^ uint32_t(trade_pair_name.value >> 32);
    }
 
-   static side_bias_t calc_sideways_side_bias(double left_price, double target_price, double fluctuation_ratio,
+   static double smoothstep(double progress) {
+      progress = clamp_double(progress, 0.0, 1.0);
+      return progress * progress * (3.0 - 2.0 * progress);
+   }
+
+   static double calc_anchor_offset_ratio(const name& trade_pair_name, uint32_t anchor_segment) {
+      uint32_t seed = trade_pair_seed(trade_pair_name) ^ (anchor_segment * 2246822519u);
+      uint32_t rand_a = mix32(seed);
+      uint32_t rand_b = mix32(seed ^ 0x9e3779b9u);
+      uint32_t rand_c = mix32(seed ^ 0x85ebca6bu);
+
+      int32_t offset_a = int32_t(rand_a % 20001u) - 10000;
+      int32_t offset_b = int32_t(rand_b % 20001u) - 10000;
+      int32_t offset_c = int32_t(rand_c % 20001u) - 10000;
+      double weighted_offset = (double(offset_a) * 0.55 + double(offset_b) * 0.30 + double(offset_c) * 0.15) / 10000.0;
+      return clamp_double(weighted_offset, -1.0, 1.0) * DYNAMIC_TARGET_OFFSET_RATIO;
+   }
+
+   static double calc_dynamic_reference_price(double target_price, double fluctuation_ratio,
                                               const name& trade_pair_name, uint32_t now_seconds) {
       if (target_price <= 0 || fluctuation_ratio <= 0) {
-         return side_bias_t{ true };
+         return target_price;
       }
 
       double band_width = target_price * fluctuation_ratio;
       if (band_width <= 0) {
-         return side_bias_t{ true };
+         return target_price;
       }
 
-      // Keep direction stable across several 5-minute candles so bid/ask fee spread does not draw clipped up/down bars.
-      uint32_t segment = now_seconds / SIDE_SEGMENT_SECONDS;
-      uint32_t segment_rand = mix32(trade_pair_seed(trade_pair_name) ^ (segment * 2246822519u));
-      bool primary_left = (segment_rand & 1u) == 0;
-      return side_bias_t{ primary_left };
+      uint32_t segment = now_seconds / TREND_ANCHOR_SECONDS;
+      uint32_t seconds_in_segment = now_seconds % TREND_ANCHOR_SECONDS;
+      double progress = double(seconds_in_segment) / double(TREND_ANCHOR_SECONDS);
+      double from_offset = calc_anchor_offset_ratio(trade_pair_name, segment);
+      double to_offset = calc_anchor_offset_ratio(trade_pair_name, segment + 1);
+      double offset_ratio = from_offset + (to_offset - from_offset) * smoothstep(progress);
+      return target_price + band_width * offset_ratio;
+   }
+
+   static market_direction_t calc_market_direction(double left_price, double target_price, double fluctuation_ratio,
+                                                   double min_correction_price, double max_correction_price,
+                                                   const name& trade_pair_name, uint32_t now_seconds) {
+      double reference_price = calc_dynamic_reference_price(target_price, fluctuation_ratio, trade_pair_name, now_seconds);
+      double next_reference_price = calc_dynamic_reference_price(target_price, fluctuation_ratio, trade_pair_name,
+                                                                 now_seconds + 300);
+      bool primary_left = next_reference_price < reference_price;
+      double deadband = max(target_price * fluctuation_ratio * TARGET_DEADBAND_RATIO, target_price * 0.0003);
+
+      if (left_price < min_correction_price) {
+         return market_direction_t{ false, primary_left, reference_price };
+      }
+      if (left_price > max_correction_price) {
+         return market_direction_t{ true, primary_left, reference_price };
+      }
+      if (left_price < reference_price - deadband) {
+         return market_direction_t{ false, primary_left, reference_price };
+      }
+      if (left_price > reference_price + deadband) {
+         return market_direction_t{ true, primary_left, reference_price };
+      }
+      return market_direction_t{ primary_left, primary_left, reference_price };
    }
 
    static int64_t calc_depth_limited_input_amount(const asset& input_reserve, double fluctuation_ratio) {
@@ -351,23 +399,14 @@ namespace flon {
       double correction_ratio = min(market_itr->fluctuation_ratio * CORRECTION_BAND_MULTIPLIER, 1.0);
       double min_correction_price = market_itr->target_price * (1 - correction_ratio );
       double max_correction_price = market_itr->target_price * (1 + correction_ratio );
-      bool is_left_side = false;
       bool inside_sideways_band = left_price >= min_sideways_price && left_price <= max_sideways_price;
       uint32_t left_inventory_bps = calc_left_inventory_value_bps(*bot_market_itr, left_price);
-      side_bias_t side_bias = calc_sideways_side_bias(left_price, market_itr->target_price, market_itr->fluctuation_ratio,
-                                                      bot_market_itr->trade_pair_name, now_seconds);
-      if (left_price < min_correction_price) {
-         // Price is materially below the target band: buy the left asset with right-side funds to lift price.
-         is_left_side = false;
-      } else if (left_price > max_correction_price) {
-         // Price is materially above the target band: sell the left asset to push price back down.
-         is_left_side = true;
-      } else {
-         // Inside the band, follow the segment direction instead of flipping every trade.
-         // Opposite-side prints in the same candle expose swap fee spread as artificial high/low clipping.
-         is_left_side = side_bias.primary_left;
-      }
-      bool counter_primary_side = inside_sideways_band && (is_left_side != side_bias.primary_left);
+      market_direction_t market_direction = calc_market_direction(left_price, market_itr->target_price,
+                                                                  market_itr->fluctuation_ratio,
+                                                                  min_correction_price, max_correction_price,
+                                                                  bot_market_itr->trade_pair_name, now_seconds);
+      bool is_left_side = market_direction.is_left_side;
+      bool counter_primary_side = inside_sideways_band && (is_left_side != market_direction.primary_left);
       int64_t trading_left_amount = calc_trade_left_amount( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
                                                             rand ^ 0x9e3779b9u, bot_market_itr->trade_pair_name,
                                                             now_seconds, counter_primary_side );
