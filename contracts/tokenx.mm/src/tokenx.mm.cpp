@@ -486,6 +486,18 @@ namespace flon {
                         row.right_pool.balance.quantity.symbol);
             int64_t input_amount = calc_trade_out(left_price, trading_left_amount, row.left_pool.balance.quantity.symbol,
                         row.right_pool.balance.quantity.symbol);
+            int64_t max_right_amount = calc_trade_out(left_price, market_itr->max_trade_amount.amount, row.left_pool.balance.quantity.symbol,
+                        row.right_pool.balance.quantity.symbol);
+            if (max_right_amount > min_right_amount) {
+               uint32_t quote_rand = mix32(rand ^ 0x165667b1u);
+               int64_t randomized_input_amount = get_random_range(min_right_amount, max_right_amount, quote_rand);
+               if (counter_primary_side) {
+                  int64_t randomized_span = randomized_input_amount - min_right_amount;
+                  uint32_t counter_bps = 4500 + (mix32(rand ^ 0x94d049bbu) % 3001);
+                  randomized_input_amount = min_right_amount + randomized_span * counter_bps / 10000;
+               }
+               input_amount = max(input_amount, randomized_input_amount);
+            }
             if (row.right_pool.balance.quantity > row.right_pool.total_quantity) {
                eosio::print("skip trade: ", side, " side fund snapshot invalid, refreshfund required\n");
                return;
