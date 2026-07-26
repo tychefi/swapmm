@@ -13,7 +13,9 @@ namespace flon {
    static const name LEFT_SIDE = "left"_n;
    static const name RIGHT_SIDE = "right"_n;
    static constexpr uint32_t SIDE_SEGMENT_SECONDS = 14400;
-   static constexpr double EDGE_REVERSION_THRESHOLD = 0.92;
+   static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
+   static constexpr uint32_t INVENTORY_LOW_BPS = 200;
+   static constexpr uint32_t INVENTORY_HIGH_BPS = 9800;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -112,19 +114,6 @@ namespace flon {
       return uint32_t(trade_pair_name.value) ^ uint32_t(trade_pair_name.value >> 32);
    }
 
-   static double calc_normalized_price_offset(double left_price, double target_price, double fluctuation_ratio) {
-      if (target_price <= 0 || fluctuation_ratio <= 0) {
-         return 0.0;
-      }
-
-      double band_width = target_price * fluctuation_ratio;
-      if (band_width <= 0) {
-         return 0.0;
-      }
-
-      return clamp_double((left_price - target_price) / band_width, -1.0, 1.0);
-   }
-
    static side_bias_t calc_sideways_side_bias(double left_price, double target_price, double fluctuation_ratio,
                                               const name& trade_pair_name, uint32_t now_seconds) {
       if (target_price <= 0 || fluctuation_ratio <= 0) {
@@ -134,15 +123,6 @@ namespace flon {
       double band_width = target_price * fluctuation_ratio;
       if (band_width <= 0) {
          return side_bias_t{ true };
-      }
-
-      double normalized = calc_normalized_price_offset(left_price, target_price, fluctuation_ratio);
-
-      if (normalized >= EDGE_REVERSION_THRESHOLD) {
-         return side_bias_t{ true };
-      }
-      if (normalized <= -EDGE_REVERSION_THRESHOLD) {
-         return side_bias_t{ false };
       }
 
       // Keep direction stable across several 5-minute candles so bid/ask fee spread does not draw clipped up/down bars.
@@ -370,31 +350,27 @@ namespace flon {
       CHECKC( market_itr->fluctuation_ratio >= 0 && market_itr->fluctuation_ratio <= 1, err::PARAM_ERROR, "invalid fluctuation ratio" )
       double min_sideways_price = market_itr->target_price * (1 - market_itr->fluctuation_ratio );
       double max_sideways_price = market_itr->target_price * (1 + market_itr->fluctuation_ratio );
+      double correction_ratio = min(market_itr->fluctuation_ratio * CORRECTION_BAND_MULTIPLIER, 1.0);
+      double min_correction_price = market_itr->target_price * (1 - correction_ratio );
+      double max_correction_price = market_itr->target_price * (1 + correction_ratio );
       bool is_left_side = false;
       bool inside_sideways_band = left_price >= min_sideways_price && left_price <= max_sideways_price;
-      double normalized_offset = calc_normalized_price_offset(left_price, market_itr->target_price, market_itr->fluctuation_ratio);
       uint32_t left_inventory_bps = calc_left_inventory_value_bps(*bot_market_itr, left_price);
       side_bias_t side_bias = calc_sideways_side_bias(left_price, market_itr->target_price, market_itr->fluctuation_ratio,
                                                       bot_market_itr->trade_pair_name, now_seconds);
-      if (left_price < min_sideways_price) {
-         // Price is below the target band: buy the left asset with right-side funds to lift price.
+      if (left_price < min_correction_price) {
+         // Price is materially below the target band: buy the left asset with right-side funds to lift price.
          is_left_side = false;
-      } else if (left_price > max_sideways_price) {
-         // Price is above the target band: sell the left asset to push price back down.
+      } else if (left_price > max_correction_price) {
+         // Price is materially above the target band: sell the left asset to push price back down.
          is_left_side = true;
-      } else if (normalized_offset >= EDGE_REVERSION_THRESHOLD) {
-         // Near the upper edge, correct price before it prints a clipped high.
-         is_left_side = true;
-      } else if (normalized_offset <= -EDGE_REVERSION_THRESHOLD) {
-         // Near the lower edge, correct price before it prints a clipped low.
-         is_left_side = false;
       } else {
          // Inside the band, follow the segment direction instead of flipping every trade.
          // Opposite-side prints in the same candle expose swap fee spread as artificial high/low clipping.
          is_left_side = side_bias.primary_left;
-         if (left_inventory_bps < 1000 && bot_market_itr->right_pool.total_quantity.amount > 0) {
+         if (left_inventory_bps < INVENTORY_LOW_BPS && bot_market_itr->right_pool.total_quantity.amount > 0) {
             is_left_side = false;
-         } else if (left_inventory_bps > 9000 && bot_market_itr->left_pool.total_quantity.amount > 0) {
+         } else if (left_inventory_bps > INVENTORY_HIGH_BPS && bot_market_itr->left_pool.total_quantity.amount > 0) {
             is_left_side = true;
          }
       }
