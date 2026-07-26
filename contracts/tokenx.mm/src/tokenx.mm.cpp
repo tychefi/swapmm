@@ -16,6 +16,8 @@ namespace flon {
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
    static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.65;
    static constexpr double TARGET_DEADBAND_RATIO = 0.04;
+   static constexpr uint32_t MIN_PRIMARY_SIDE_BPS = 5400;
+   static constexpr uint32_t MAX_PRIMARY_SIDE_BPS = 8600;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -156,26 +158,47 @@ namespace flon {
 
    static market_direction_t calc_market_direction(double left_price, double target_price, double fluctuation_ratio,
                                                    double min_correction_price, double max_correction_price,
-                                                   const name& trade_pair_name, uint32_t now_seconds) {
+                                                   const name& trade_pair_name, uint32_t now_seconds, uint32_t rand) {
       double reference_price = calc_dynamic_reference_price(target_price, fluctuation_ratio, trade_pair_name, now_seconds);
       double next_reference_price = calc_dynamic_reference_price(target_price, fluctuation_ratio, trade_pair_name,
                                                                  now_seconds + 300);
-      bool primary_left = next_reference_price < reference_price;
+      bool trend_left = next_reference_price < reference_price;
       double deadband = max(target_price * fluctuation_ratio * TARGET_DEADBAND_RATIO, target_price * 0.0003);
+      double min_sideways_price = target_price * (1 - fluctuation_ratio);
+      double max_sideways_price = target_price * (1 + fluctuation_ratio);
+      double band_width = max(target_price * fluctuation_ratio, target_price * 0.0001);
 
       if (left_price < min_correction_price) {
-         return market_direction_t{ false, primary_left, reference_price };
+         return market_direction_t{ false, trend_left, reference_price };
       }
       if (left_price > max_correction_price) {
-         return market_direction_t{ true, primary_left, reference_price };
+         return market_direction_t{ true, trend_left, reference_price };
       }
-      if (left_price < reference_price - deadband) {
-         return market_direction_t{ false, primary_left, reference_price };
+      if (left_price < min_sideways_price) {
+         return market_direction_t{ false, trend_left, reference_price };
       }
-      if (left_price > reference_price + deadband) {
-         return market_direction_t{ true, primary_left, reference_price };
+      if (left_price > max_sideways_price) {
+         return market_direction_t{ true, trend_left, reference_price };
       }
-      return market_direction_t{ primary_left, primary_left, reference_price };
+
+      double diff = left_price - reference_price;
+      double distance_ratio = clamp_double(std::abs(diff) / band_width, 0.0, 1.0);
+      bool corrective_left = diff > 0;
+      bool primary_left = std::abs(diff) <= deadband ? trend_left : corrective_left;
+
+      uint32_t side_rand = mix32(rand ^ trade_pair_seed(trade_pair_name) ^ (now_seconds / 60));
+      uint32_t primary_bps = MIN_PRIMARY_SIDE_BPS + uint32_t(distance_ratio * double(MAX_PRIMARY_SIDE_BPS - MIN_PRIMARY_SIDE_BPS));
+      if (primary_left == trend_left) {
+         primary_bps = min<uint32_t>(9300, primary_bps + 700);
+      } else if (distance_ratio < 0.35) {
+         primary_bps = max<uint32_t>(5200, primary_bps - 500);
+      }
+
+      bool is_left_side = primary_left;
+      if ((side_rand % 10000) >= primary_bps) {
+         is_left_side = !primary_left;
+      }
+      return market_direction_t{ is_left_side, primary_left, reference_price };
    }
 
    static int64_t calc_depth_limited_input_amount(const asset& input_reserve, double fluctuation_ratio) {
@@ -189,17 +212,21 @@ namespace flon {
 
    static int64_t calc_trade_left_amount(int64_t min_amount, int64_t max_amount, uint32_t rand,
                                          const name& trade_pair_name, uint32_t now_seconds, bool counter_primary_side) {
-      int64_t amount = get_small_biased_random_range(min_amount, max_amount, rand);
+      int64_t amount = get_random_range(min_amount, max_amount, rand);
       if (max_amount <= min_amount) return amount;
 
       int64_t span_amount = amount - min_amount;
       if (counter_primary_side) {
-         return min_amount + span_amount * 35 / 100;
+         uint32_t counter_bps = 4500 + (mix32(rand ^ 0x27d4eb2du) % 3001);
+         return min(max_amount, min_amount + span_amount * counter_bps / 10000);
       }
 
       uint32_t segment = now_seconds / 900;
       uint32_t rhythm_rand = mix32(trade_pair_seed(trade_pair_name) ^ (segment * 3266489917u) ^ (rand >> 7));
-      uint32_t rhythm_bps = 7000 + (rhythm_rand % 6001);
+      uint32_t rhythm_bps = 6500 + (rhythm_rand % 5501);
+      if ((rhythm_rand % 100) < 18) {
+         rhythm_bps = 11500 + (rhythm_rand % 2501);
+      }
       int64_t adjusted_span = span_amount * rhythm_bps / 10000;
       return min(max_amount, min_amount + adjusted_span);
    }
@@ -404,7 +431,7 @@ namespace flon {
       market_direction_t market_direction = calc_market_direction(left_price, market_itr->target_price,
                                                                   market_itr->fluctuation_ratio,
                                                                   min_correction_price, max_correction_price,
-                                                                  bot_market_itr->trade_pair_name, now_seconds);
+                                                                  bot_market_itr->trade_pair_name, now_seconds, rand);
       bool is_left_side = market_direction.is_left_side;
       bool counter_primary_side = inside_sideways_band && (is_left_side != market_direction.primary_left);
       int64_t trading_left_amount = calc_trade_left_amount( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
