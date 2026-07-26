@@ -17,7 +17,7 @@ url="https://m.flonscan.io"
 trade_pair="flon.usdt"
 min_trade_amount="0.20000000 FLON"
 max_trade_amount="0.80000000 FLON"
-target_price=0.00302
+target_price=0.00323
 data='["'$trade_pair'","'$target_price'","'"$min_trade_amount"'","'"$max_trade_amount"'","",["'"$trade_updater"'"]]'
 fucli -u "$url" push action "$buylowsellhi_contract" settrademkt "$data" -p "$buylowsellhi_contract@active"
 
@@ -33,10 +33,10 @@ fucli -u "$url" push action "$buylowsellhi_contract" settrademkt "$data" -p "$bu
 
 ```bash
 trade_pair="flon.usdt"
-fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.004,0.006]' -p "$trade_updater@active"
+fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.006,0.003]' -p "$trade_updater@active"
 
 trade_pair="sing.usdt"
-fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.003,0.006]' -p "$trade_updater@active"
+fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.006,0.003]' -p "$trade_updater@active"
 ```
 
 After deploying a `buylowsellhi` build that contains `settradeint`, spread the contract cadence:
