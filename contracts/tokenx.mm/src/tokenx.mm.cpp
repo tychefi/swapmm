@@ -16,8 +16,9 @@ namespace flon {
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
    static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.65;
    static constexpr double TARGET_DEADBAND_RATIO = 0.04;
-   static constexpr uint32_t MIN_PRIMARY_SIDE_BPS = 6200;
-   static constexpr uint32_t MAX_PRIMARY_SIDE_BPS = 9200;
+   static constexpr uint32_t CANDLE_SECONDS = 300;
+   static constexpr uint32_t CANDLE_PLAN_CYCLE = 7;
+   static constexpr double PULLBACK_MAX_DISTANCE_RATIO = 0.70;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -194,25 +195,16 @@ namespace flon {
          primary_left = trend_left;
       }
 
-      uint32_t candle_segment = now_seconds / 300;
-      uint32_t side_rand = mix32(trade_pair_seed(trade_pair_name) ^ (candle_segment * 2246822519u));
-      uint32_t primary_bps = MIN_PRIMARY_SIDE_BPS;
-      primary_bps += (uint32_t)(distance_ratio * (double)(MAX_PRIMARY_SIDE_BPS - MIN_PRIMARY_SIDE_BPS));
-      if (primary_left == trend_left) {
-         primary_bps += 700;
-         if (primary_bps > 9300) {
-            primary_bps = 9300;
-         }
-      } else if (distance_ratio < 0.35) {
-         if (primary_bps < 5700) {
-            primary_bps = 5200;
-         } else {
-            primary_bps -= 500;
+      bool is_left_side = primary_left;
+      uint32_t candle_segment = now_seconds / CANDLE_SECONDS;
+      uint32_t plan_phase = (candle_segment + (trade_pair_seed(trade_pair_name) % CANDLE_PLAN_CYCLE)) % CANDLE_PLAN_CYCLE;
+      bool pullback_candle = false;
+      if (distance_ratio < PULLBACK_MAX_DISTANCE_RATIO) {
+         if (plan_phase == 3 || plan_phase == 6) {
+            pullback_candle = true;
          }
       }
-
-      bool is_left_side = primary_left;
-      if ((side_rand % 10000) >= primary_bps) {
+      if (pullback_candle) {
          is_left_side = !primary_left;
       }
       return market_direction_t{ is_left_side, primary_left, reference_price };
