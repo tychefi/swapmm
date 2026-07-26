@@ -12,7 +12,7 @@ namespace flon {
 
    static const name LEFT_SIDE = "left"_n;
    static const name RIGHT_SIDE = "right"_n;
-   static constexpr uint32_t SIDE_SEGMENT_SECONDS = 1800;
+   static constexpr uint32_t SIDE_SEGMENT_SECONDS = 14400;
    static constexpr double EDGE_REVERSION_THRESHOLD = 0.92;
 
    // scope: buylowsellhi contract
