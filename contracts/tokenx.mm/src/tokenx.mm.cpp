@@ -12,6 +12,8 @@ namespace flon {
 
    static const name LEFT_SIDE = "left"_n;
    static const name RIGHT_SIDE = "right"_n;
+   static constexpr uint32_t SIDE_SEGMENT_SECONDS = 1800;
+   static constexpr double EDGE_REVERSION_THRESHOLD = 0.92;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -104,48 +106,50 @@ namespace flon {
 
    struct side_bias_t {
       bool     primary_left;
-      uint32_t left_probability_bps;
    };
 
    static uint32_t trade_pair_seed(const name& trade_pair_name) {
       return uint32_t(trade_pair_name.value) ^ uint32_t(trade_pair_name.value >> 32);
    }
 
-   static uint32_t calc_segment_random_bps(const name& trade_pair_name, uint32_t now_seconds) {
-      uint32_t segment = now_seconds / 300;
-      return mix32(trade_pair_seed(trade_pair_name) ^ (segment * 2246822519u) ^ 0x51ed270bu) % 10000;
+   static double calc_normalized_price_offset(double left_price, double target_price, double fluctuation_ratio) {
+      if (target_price <= 0 || fluctuation_ratio <= 0) {
+         return 0.0;
+      }
+
+      double band_width = target_price * fluctuation_ratio;
+      if (band_width <= 0) {
+         return 0.0;
+      }
+
+      return clamp_double((left_price - target_price) / band_width, -1.0, 1.0);
    }
 
    static side_bias_t calc_sideways_side_bias(double left_price, double target_price, double fluctuation_ratio,
                                               const name& trade_pair_name, uint32_t now_seconds) {
       if (target_price <= 0 || fluctuation_ratio <= 0) {
-         return side_bias_t{ true, 5000 };
+         return side_bias_t{ true };
       }
 
       double band_width = target_price * fluctuation_ratio;
       if (band_width <= 0) {
-         return side_bias_t{ true, 5000 };
+         return side_bias_t{ true };
       }
 
-      double normalized = (left_price - target_price) / band_width;
-      normalized = clamp_double(normalized, -1.0, 1.0);
+      double normalized = calc_normalized_price_offset(left_price, target_price, fluctuation_ratio);
 
-      if (normalized >= 0.70) {
-         return side_bias_t{ true, 8500 };
+      if (normalized >= EDGE_REVERSION_THRESHOLD) {
+         return side_bias_t{ true };
       }
-      if (normalized <= -0.70) {
-         return side_bias_t{ false, 1500 };
+      if (normalized <= -EDGE_REVERSION_THRESHOLD) {
+         return side_bias_t{ false };
       }
 
-      // Keep an intrabar direction preference stable for a 5-minute window.
-      // This avoids repeatedly sweeping both sides of the same candle while still reverting to target.
-      uint32_t segment = now_seconds / 300;
+      // Keep direction stable across several 5-minute candles so bid/ask fee spread does not draw clipped up/down bars.
+      uint32_t segment = now_seconds / SIDE_SEGMENT_SECONDS;
       uint32_t segment_rand = mix32(trade_pair_seed(trade_pair_name) ^ (segment * 2246822519u));
       bool primary_left = (segment_rand & 1u) == 0;
-      double segment_bias = primary_left ? 1800.0 : -1800.0;
-      double reversion_bias = normalized * 4200.0;
-      uint32_t left_probability_bps = (uint32_t)clamp_double(5000.0 + segment_bias + reversion_bias, 1200.0, 8800.0);
-      return side_bias_t{ primary_left, left_probability_bps };
+      return side_bias_t{ primary_left };
    }
 
    static int64_t calc_depth_limited_input_amount(const asset& input_reserve, double fluctuation_ratio) {
@@ -183,14 +187,6 @@ namespace flon {
       double total_value_in_right = left_value_in_right + right_amount;
       if (total_value_in_right <= 0) return 5000;
       return (uint32_t)clamp_double(left_value_in_right * 10000.0 / total_value_in_right, 0.0, 10000.0);
-   }
-
-   static uint32_t apply_inventory_bias_bps(uint32_t left_probability_bps, uint32_t left_inventory_bps) {
-      if (left_inventory_bps < 1500) return 500;
-      if (left_inventory_bps > 8500) return 9500;
-
-      double inventory_bias = ((double)left_inventory_bps - 5000.0) * 0.65;
-      return (uint32_t)clamp_double((double)left_probability_bps + inventory_bias, 800.0, 9200.0);
    }
 
    static int64_t apply_inventory_amount_limit(int64_t amount, bool is_left_side, uint32_t left_inventory_bps) {
@@ -376,6 +372,7 @@ namespace flon {
       double max_sideways_price = market_itr->target_price * (1 + market_itr->fluctuation_ratio );
       bool is_left_side = false;
       bool inside_sideways_band = left_price >= min_sideways_price && left_price <= max_sideways_price;
+      double normalized_offset = calc_normalized_price_offset(left_price, market_itr->target_price, market_itr->fluctuation_ratio);
       uint32_t left_inventory_bps = calc_left_inventory_value_bps(*bot_market_itr, left_price);
       side_bias_t side_bias = calc_sideways_side_bias(left_price, market_itr->target_price, market_itr->fluctuation_ratio,
                                                       bot_market_itr->trade_pair_name, now_seconds);
@@ -385,10 +382,16 @@ namespace flon {
       } else if (left_price > max_sideways_price) {
          // Price is above the target band: sell the left asset to push price back down.
          is_left_side = true;
+      } else if (normalized_offset >= EDGE_REVERSION_THRESHOLD) {
+         // Near the upper edge, correct price before it prints a clipped high.
+         is_left_side = true;
+      } else if (normalized_offset <= -EDGE_REVERSION_THRESHOLD) {
+         // Near the lower edge, correct price before it prints a clipped low.
+         is_left_side = false;
       } else {
-         // Inside the target band, keep a stable intrabar side preference with mean-reversion and inventory bias.
-         uint32_t left_side_probability_bps = apply_inventory_bias_bps(side_bias.left_probability_bps, left_inventory_bps);
-         is_left_side = calc_segment_random_bps(bot_market_itr->trade_pair_name, now_seconds) < left_side_probability_bps;
+         // Inside the band, follow the segment direction instead of flipping every trade.
+         // Opposite-side prints in the same candle expose swap fee spread as artificial high/low clipping.
+         is_left_side = side_bias.primary_left;
          if (left_inventory_bps < 1000 && bot_market_itr->right_pool.total_quantity.amount > 0) {
             is_left_side = false;
          } else if (left_inventory_bps > 9000 && bot_market_itr->left_pool.total_quantity.amount > 0) {
