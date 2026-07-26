@@ -111,6 +111,11 @@ namespace flon {
       return uint32_t(trade_pair_name.value) ^ uint32_t(trade_pair_name.value >> 32);
    }
 
+   static uint32_t calc_segment_random_bps(const name& trade_pair_name, uint32_t now_seconds) {
+      uint32_t segment = now_seconds / 300;
+      return mix32(trade_pair_seed(trade_pair_name) ^ (segment * 2246822519u) ^ 0x51ed270bu) % 10000;
+   }
+
    static side_bias_t calc_sideways_side_bias(double left_price, double target_price, double fluctuation_ratio,
                                               const name& trade_pair_name, uint32_t now_seconds) {
       if (target_price <= 0 || fluctuation_ratio <= 0) {
@@ -383,7 +388,7 @@ namespace flon {
       } else {
          // Inside the target band, keep a stable intrabar side preference with mean-reversion and inventory bias.
          uint32_t left_side_probability_bps = apply_inventory_bias_bps(side_bias.left_probability_bps, left_inventory_bps);
-         is_left_side = (rand % 10000) < left_side_probability_bps;
+         is_left_side = calc_segment_random_bps(bot_market_itr->trade_pair_name, now_seconds) < left_side_probability_bps;
          if (left_inventory_bps < 1000 && bot_market_itr->right_pool.total_quantity.amount > 0) {
             is_left_side = false;
          } else if (left_inventory_bps > 9000 && bot_market_itr->left_pool.total_quantity.amount > 0) {

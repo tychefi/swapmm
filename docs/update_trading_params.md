@@ -22,8 +22,8 @@ data='["'$trade_pair'","'$target_price'","'"$min_trade_amount"'","'"$max_trade_a
 fucli -u "$url" push action "$buylowsellhi_contract" settrademkt "$data" -p "$buylowsellhi_contract@active"
 
 trade_pair="sing.usdt"
-min_trade_amount="3.00000000 SING"
-max_trade_amount="12.00000000 SING"
+min_trade_amount="1.00000000 SING"
+max_trade_amount="3.00000000 SING"
 target_price=0.1
 data='["'$trade_pair'","'$target_price'","'"$min_trade_amount"'","'"$max_trade_amount"'","",["'"$trade_updater"'"]]'
 fucli -u "$url" push action "$buylowsellhi_contract" settrademkt "$data" -p "$buylowsellhi_contract@active"
@@ -36,7 +36,7 @@ trade_pair="flon.usdt"
 fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.004,0.006]' -p "$trade_updater@active"
 
 trade_pair="sing.usdt"
-fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.004,0.008]' -p "$trade_updater@active"
+fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.003,0.006]' -p "$trade_updater@active"
 ```
 
 After deploying a `buylowsellhi` build that contains `settradeint`, spread the contract cadence:
@@ -46,7 +46,7 @@ trade_pair="flon.usdt"
 fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",90,240]' -p "$buylowsellhi_contract@active"
 
 trade_pair="sing.usdt"
-fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",45,150]' -p "$buylowsellhi_contract@active"
+fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",180,360]' -p "$buylowsellhi_contract@active"
 ```
 
 ## 4. Get current trade market config
