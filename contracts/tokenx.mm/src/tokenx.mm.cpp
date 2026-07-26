@@ -189,14 +189,25 @@ namespace flon {
       double abs_diff = abs_double(diff);
       double distance_ratio = clamp_double(abs_diff / band_width, 0.0, 1.0);
       bool corrective_left = diff > 0;
-      bool primary_left = abs_diff <= deadband ? trend_left : corrective_left;
+      bool primary_left = corrective_left;
+      if (abs_diff <= deadband) {
+         primary_left = trend_left;
+      }
 
       uint32_t side_rand = mix32(rand ^ trade_pair_seed(trade_pair_name) ^ (now_seconds / 60));
-      uint32_t primary_bps = MIN_PRIMARY_SIDE_BPS + uint32_t(distance_ratio * double(MAX_PRIMARY_SIDE_BPS - MIN_PRIMARY_SIDE_BPS));
+      uint32_t primary_bps = MIN_PRIMARY_SIDE_BPS;
+      primary_bps += (uint32_t)(distance_ratio * (double)(MAX_PRIMARY_SIDE_BPS - MIN_PRIMARY_SIDE_BPS));
       if (primary_left == trend_left) {
-         primary_bps = primary_bps + 700 > 9300 ? 9300 : primary_bps + 700;
+         primary_bps += 700;
+         if (primary_bps > 9300) {
+            primary_bps = 9300;
+         }
       } else if (distance_ratio < 0.35) {
-         primary_bps = primary_bps < 5700 ? 5200 : primary_bps - 500;
+         if (primary_bps < 5700) {
+            primary_bps = 5200;
+         } else {
+            primary_bps -= 500;
+         }
       }
 
       bool is_left_side = primary_left;
