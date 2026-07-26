@@ -262,13 +262,13 @@ namespace flon {
    static int64_t apply_inventory_amount_limit(int64_t amount, int64_t min_amount, bool is_left_side, uint32_t left_inventory_bps) {
       uint32_t scale_bps = 10000;
       if (is_left_side && left_inventory_bps < 3500) {
-         scale_bps = 3500;
+         scale_bps = 5500;
       } else if (!is_left_side && left_inventory_bps > 6500) {
-         scale_bps = 3500;
+         scale_bps = 5500;
       } else if (is_left_side && left_inventory_bps < 4500) {
-         scale_bps = 6500;
+         scale_bps = 7500;
       } else if (!is_left_side && left_inventory_bps > 5500) {
-         scale_bps = 6500;
+         scale_bps = 7500;
       }
       return std::max<int64_t>(min_amount, amount * scale_bps / 10000);
    }
