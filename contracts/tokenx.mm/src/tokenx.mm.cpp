@@ -16,8 +16,8 @@ namespace flon {
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
    static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.65;
    static constexpr double TARGET_DEADBAND_RATIO = 0.04;
-   static constexpr uint32_t MIN_PRIMARY_SIDE_BPS = 5400;
-   static constexpr uint32_t MAX_PRIMARY_SIDE_BPS = 8600;
+   static constexpr uint32_t MIN_PRIMARY_SIDE_BPS = 6200;
+   static constexpr uint32_t MAX_PRIMARY_SIDE_BPS = 9200;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -194,7 +194,8 @@ namespace flon {
          primary_left = trend_left;
       }
 
-      uint32_t side_rand = mix32(rand ^ trade_pair_seed(trade_pair_name) ^ (now_seconds / 60));
+      uint32_t candle_segment = now_seconds / 300;
+      uint32_t side_rand = mix32(trade_pair_seed(trade_pair_name) ^ (candle_segment * 2246822519u));
       uint32_t primary_bps = MIN_PRIMARY_SIDE_BPS;
       primary_bps += (uint32_t)(distance_ratio * (double)(MAX_PRIMARY_SIDE_BPS - MIN_PRIMARY_SIDE_BPS));
       if (primary_left == trend_left) {
