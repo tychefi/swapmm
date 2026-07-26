@@ -46,7 +46,7 @@ trade_pair="flon.usdt"
 fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",90,240]' -p "$buylowsellhi_contract@active"
 
 trade_pair="sing.usdt"
-fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",180,360]' -p "$buylowsellhi_contract@active"
+fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",330,600]' -p "$buylowsellhi_contract@active"
 ```
 
 ## 4. Get current trade market config
