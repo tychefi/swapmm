@@ -19,6 +19,9 @@ namespace flon {
    static constexpr uint32_t CANDLE_SECONDS = 300;
    static constexpr uint32_t CANDLE_PLAN_CYCLE = 7;
    static constexpr double PULLBACK_MAX_DISTANCE_RATIO = 0.70;
+   static constexpr uint32_t OPEN_WICK_SECONDS = 70;
+   static constexpr uint32_t CLOSE_WICK_SECONDS = 55;
+   static constexpr double WICK_MAX_DISTANCE_RATIO = 0.80;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -195,8 +198,8 @@ namespace flon {
          primary_left = trend_left;
       }
 
-      bool is_left_side = primary_left;
       uint32_t candle_segment = now_seconds / CANDLE_SECONDS;
+      uint32_t seconds_in_candle = now_seconds % CANDLE_SECONDS;
       uint32_t plan_phase = (candle_segment + (trade_pair_seed(trade_pair_name) % CANDLE_PLAN_CYCLE)) % CANDLE_PLAN_CYCLE;
       bool pullback_candle = false;
       if (distance_ratio < PULLBACK_MAX_DISTANCE_RATIO) {
@@ -204,10 +207,21 @@ namespace flon {
             pullback_candle = true;
          }
       }
+      bool body_left = primary_left;
       if (pullback_candle) {
-         is_left_side = !primary_left;
+         body_left = !primary_left;
       }
-      return market_direction_t{ is_left_side, primary_left, reference_price };
+
+      bool is_left_side = body_left;
+      if (distance_ratio < WICK_MAX_DISTANCE_RATIO) {
+         uint32_t wick_rand = mix32(trade_pair_seed(trade_pair_name) ^ (candle_segment * 1103515245u));
+         bool open_wick = seconds_in_candle < OPEN_WICK_SECONDS && (wick_rand % 100) < 70;
+         bool close_wick = seconds_in_candle > CANDLE_SECONDS - CLOSE_WICK_SECONDS && ((wick_rand >> 8) % 100) < 55;
+         if (open_wick || close_wick) {
+            is_left_side = !body_left;
+         }
+      }
+      return market_direction_t{ is_left_side, body_left, reference_price };
    }
 
    static int64_t calc_depth_limited_input_amount(const asset& input_reserve, double fluctuation_ratio) {
