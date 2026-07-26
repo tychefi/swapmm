@@ -189,7 +189,7 @@ namespace flon {
       return (uint32_t)clamp_double(left_value_in_right * 10000.0 / total_value_in_right, 0.0, 10000.0);
    }
 
-   static int64_t apply_inventory_amount_limit(int64_t amount, bool is_left_side, uint32_t left_inventory_bps) {
+   static int64_t apply_inventory_amount_limit(int64_t amount, int64_t min_amount, bool is_left_side, uint32_t left_inventory_bps) {
       uint32_t scale_bps = 10000;
       if (is_left_side && left_inventory_bps < 3500) {
          scale_bps = 3500;
@@ -200,7 +200,7 @@ namespace flon {
       } else if (!is_left_side && left_inventory_bps > 5500) {
          scale_bps = 6500;
       }
-      return std::max<int64_t>(1, amount * scale_bps / 10000);
+      return std::max<int64_t>(min_amount, amount * scale_bps / 10000);
    }
 
    DEFINE_VERSION_CONTRACT_CLASS("tokenx.mm", tokenx_mm)
@@ -402,7 +402,8 @@ namespace flon {
       int64_t trading_left_amount = calc_trade_left_amount( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
                                                             rand ^ 0x9e3779b9u, bot_market_itr->trade_pair_name,
                                                             now_seconds, counter_primary_side );
-      trading_left_amount = apply_inventory_amount_limit(trading_left_amount, is_left_side, left_inventory_bps);
+      trading_left_amount = apply_inventory_amount_limit(trading_left_amount, market_itr->min_trade_amount.amount,
+                                                         is_left_side, left_inventory_bps);
 
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
 
@@ -418,15 +419,19 @@ namespace flon {
             int64_t max_input_amount = get_input_pool_available(row.left_pool, bot);
             int64_t depth_limited_amount = calc_depth_limited_input_amount(swap_market_itr->left_pool_quant.quantity, market_itr->fluctuation_ratio);
             int64_t input_amount = min(min(trading_left_amount, depth_limited_amount), max_input_amount);
-            if (input_amount <= 0) {
-               eosio::print("skip trade: ", side, " side total quantity is zero\n");
-               return;
-            }
+            CHECKC( input_amount > 0, err::STATUS_ERROR,
+               "no fill: selected bot has no available input balance for " + side.to_string() + " side" )
+            CHECKC( input_amount >= market_itr->min_trade_amount.amount, err::STATUS_ERROR,
+               "no fill: calculated input quantity below min_trade_amount for " + side.to_string() + " side" +
+               ", input_quantity: " + asset(input_amount, row.left_pool.balance.quantity.symbol).to_string() +
+               ", min_trade_amount: " + market_itr->min_trade_amount.to_string() )
             do_trade(side, row, row.left_pool, row.right_pool, min_price, input_amount, bot, bot_group_itr->bots.size());
             trade_sent = true;
          } else { // right_side
             double price = 1 / left_price;
 
+            int64_t min_right_amount = calc_trade_out(left_price, market_itr->min_trade_amount.amount, row.left_pool.balance.quantity.symbol,
+                        row.right_pool.balance.quantity.symbol);
             int64_t input_amount = calc_trade_out(left_price, trading_left_amount, row.left_pool.balance.quantity.symbol,
                         row.right_pool.balance.quantity.symbol);
             if (row.right_pool.balance.quantity > row.right_pool.total_quantity) {
@@ -436,10 +441,13 @@ namespace flon {
             int64_t max_input_amount = get_input_pool_available(row.right_pool, bot);
             int64_t depth_limited_amount = calc_depth_limited_input_amount(swap_market_itr->right_pool_quant.quantity, market_itr->fluctuation_ratio);
             input_amount = min(min(input_amount, depth_limited_amount), max_input_amount);
-            if (input_amount <= 0) {
-               eosio::print("skip trade: ", side, " side total quantity is zero\n");
-               return;
-            }
+            CHECKC( input_amount > 0, err::STATUS_ERROR,
+               "no fill: selected bot has no available input balance for " + side.to_string() + " side" )
+            CHECKC( input_amount >= min_right_amount, err::STATUS_ERROR,
+               "no fill: calculated input quantity below min_trade_amount for " + side.to_string() + " side" +
+               ", input_quantity: " + asset(input_amount, row.right_pool.balance.quantity.symbol).to_string() +
+               ", min_input_quantity: " + asset(min_right_amount, row.right_pool.balance.quantity.symbol).to_string() +
+               ", min_trade_amount: " + market_itr->min_trade_amount.to_string() )
             double min_price = price * (1 - market_itr->max_slippage);
             // check(false, "side: " + side.to_string() + ", input_amount: " + std::to_string(input_amount) + ", trading_left_amount: " + std::to_string(trading_left_amount) +
             //    ", price: " + std::to_string(price));
