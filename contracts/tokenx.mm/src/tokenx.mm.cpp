@@ -229,13 +229,12 @@ namespace flon {
 
    static int64_t calc_trade_left_amount(int64_t min_amount, int64_t max_amount, uint32_t rand,
                                          const name& trade_pair_name, uint32_t now_seconds, bool counter_primary_side) {
-      int64_t amount = get_random_range(min_amount, max_amount, rand);
-      if (max_amount <= min_amount) return amount;
+      if (max_amount <= min_amount) return min_amount;
 
-      int64_t span_amount = amount - min_amount;
+      int64_t total_span = max_amount - min_amount;
+      uint32_t span_bps = 2500 + (rand % 7501);
       if (counter_primary_side) {
-         uint32_t counter_bps = 4500 + (mix32(rand ^ 0x27d4eb2du) % 3001);
-         return min(max_amount, min_amount + span_amount * counter_bps / 10000);
+         span_bps = 1000 + (mix32(rand ^ 0x27d4eb2du) % 4501);
       }
 
       uint32_t segment = now_seconds / 900;
@@ -244,7 +243,8 @@ namespace flon {
       if ((rhythm_rand % 100) < 18) {
          rhythm_bps = 11500 + (rhythm_rand % 2501);
       }
-      int64_t adjusted_span = span_amount * rhythm_bps / 10000;
+      int64_t adjusted_span = total_span * span_bps / 10000;
+      adjusted_span = adjusted_span * rhythm_bps / 10000;
       return min(max_amount, min_amount + adjusted_span);
    }
 
@@ -486,18 +486,6 @@ namespace flon {
                         row.right_pool.balance.quantity.symbol);
             int64_t input_amount = calc_trade_out(left_price, trading_left_amount, row.left_pool.balance.quantity.symbol,
                         row.right_pool.balance.quantity.symbol);
-            int64_t max_right_amount = calc_trade_out(left_price, market_itr->max_trade_amount.amount, row.left_pool.balance.quantity.symbol,
-                        row.right_pool.balance.quantity.symbol);
-            if (max_right_amount > min_right_amount) {
-               uint32_t quote_rand = mix32(rand ^ 0x165667b1u);
-               int64_t randomized_input_amount = get_random_range(min_right_amount, max_right_amount, quote_rand);
-               if (counter_primary_side) {
-                  int64_t randomized_span = randomized_input_amount - min_right_amount;
-                  uint32_t counter_bps = 4500 + (mix32(rand ^ 0x94d049bbu) % 3001);
-                  randomized_input_amount = min_right_amount + randomized_span * counter_bps / 10000;
-               }
-               input_amount = max(input_amount, randomized_input_amount);
-            }
             if (row.right_pool.balance.quantity > row.right_pool.total_quantity) {
                eosio::print("skip trade: ", side, " side fund snapshot invalid, refreshfund required\n");
                return;
