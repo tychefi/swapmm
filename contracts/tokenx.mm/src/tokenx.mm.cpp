@@ -83,6 +83,10 @@ namespace flon {
       return value;
    }
 
+   static double abs_double(double value) {
+      return value < 0 ? -value : value;
+   }
+
    static int64_t get_small_biased_random_range(int64_t min, int64_t max, uint32_t rand) {
       ASSERT(max >= min);
       if (max == min) return max;
@@ -182,16 +186,17 @@ namespace flon {
       }
 
       double diff = left_price - reference_price;
-      double distance_ratio = clamp_double(std::abs(diff) / band_width, 0.0, 1.0);
+      double abs_diff = abs_double(diff);
+      double distance_ratio = clamp_double(abs_diff / band_width, 0.0, 1.0);
       bool corrective_left = diff > 0;
-      bool primary_left = std::abs(diff) <= deadband ? trend_left : corrective_left;
+      bool primary_left = abs_diff <= deadband ? trend_left : corrective_left;
 
       uint32_t side_rand = mix32(rand ^ trade_pair_seed(trade_pair_name) ^ (now_seconds / 60));
       uint32_t primary_bps = MIN_PRIMARY_SIDE_BPS + uint32_t(distance_ratio * double(MAX_PRIMARY_SIDE_BPS - MIN_PRIMARY_SIDE_BPS));
       if (primary_left == trend_left) {
-         primary_bps = min<uint32_t>(9300, primary_bps + 700);
+         primary_bps = primary_bps + 700 > 9300 ? 9300 : primary_bps + 700;
       } else if (distance_ratio < 0.35) {
-         primary_bps = max<uint32_t>(5200, primary_bps - 500);
+         primary_bps = primary_bps < 5700 ? 5200 : primary_bps - 500;
       }
 
       bool is_left_side = primary_left;
