@@ -19,8 +19,7 @@ namespace flon {
    static constexpr uint32_t CANDLE_SECONDS = 300;
    static constexpr uint32_t CANDLE_PLAN_CYCLE = 7;
    static constexpr double PULLBACK_MAX_DISTANCE_RATIO = 0.70;
-   static constexpr uint32_t OPEN_WICK_SECONDS = 45;
-   static constexpr uint32_t CLOSE_WICK_SECONDS = 40;
+   static constexpr uint32_t OPEN_WICK_SECONDS = 35;
    static constexpr double WICK_MAX_DISTANCE_RATIO = 0.70;
 
    // scope: buylowsellhi contract
@@ -214,9 +213,8 @@ namespace flon {
       bool is_left_side = body_left;
       if (distance_ratio < WICK_MAX_DISTANCE_RATIO) {
          uint32_t wick_rand = mix32(trade_pair_seed(trade_pair_name) ^ (candle_segment * 1103515245u));
-         bool open_wick = seconds_in_candle < OPEN_WICK_SECONDS && (wick_rand % 100) < 55;
-         bool close_wick = seconds_in_candle > CANDLE_SECONDS - CLOSE_WICK_SECONDS && ((wick_rand >> 8) % 100) < 40;
-         if (open_wick || close_wick) {
+         bool open_wick = seconds_in_candle < OPEN_WICK_SECONDS && (wick_rand % 100) < 35;
+         if (open_wick) {
             is_left_side = !body_left;
          }
       }
