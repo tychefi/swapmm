@@ -14,8 +14,6 @@ namespace flon {
    static const name RIGHT_SIDE = "right"_n;
    static constexpr uint32_t SIDE_SEGMENT_SECONDS = 14400;
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
-   static constexpr uint32_t INVENTORY_LOW_BPS = 200;
-   static constexpr uint32_t INVENTORY_HIGH_BPS = 9800;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -368,11 +366,6 @@ namespace flon {
          // Inside the band, follow the segment direction instead of flipping every trade.
          // Opposite-side prints in the same candle expose swap fee spread as artificial high/low clipping.
          is_left_side = side_bias.primary_left;
-         if (left_inventory_bps < INVENTORY_LOW_BPS && bot_market_itr->right_pool.total_quantity.amount > 0) {
-            is_left_side = false;
-         } else if (left_inventory_bps > INVENTORY_HIGH_BPS && bot_market_itr->left_pool.total_quantity.amount > 0) {
-            is_left_side = true;
-         }
       }
       bool counter_primary_side = inside_sideways_band && (is_left_side != side_bias.primary_left);
       int64_t trading_left_amount = calc_trade_left_amount( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,

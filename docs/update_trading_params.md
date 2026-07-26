@@ -43,7 +43,7 @@ After deploying a `buylowsellhi` build that contains `settradeint`, spread the c
 
 ```bash
 trade_pair="flon.usdt"
-mpush "$buylowsellhi_contract" settradeint '["'$trade_pair'",90,240]' -p "$buylowsellhi_contract@active"
+mpush "$buylowsellhi_contract" settradeint '["'$trade_pair'",20,30]' -p "$buylowsellhi_contract@active"
 
 trade_pair="sing.usdt"
 mpush "$buylowsellhi_contract" settradeint '["'$trade_pair'",20,30]' -p "$buylowsellhi_contract@active"
