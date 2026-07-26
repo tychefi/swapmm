@@ -15,15 +15,15 @@ url="https://m.flonscan.io"
 ## 2. Configure trade markets of `buylowsellhi`
 ```bash
 trade_pair="flon.usdt"
-min_trade_amount="0.50000000 FLON"
-max_trade_amount="2.00000000 FLON"
+min_trade_amount="0.20000000 FLON"
+max_trade_amount="0.80000000 FLON"
 target_price=0.00302
 data='["'$trade_pair'","'$target_price'","'"$min_trade_amount"'","'"$max_trade_amount"'","",["'"$trade_updater"'"]]'
 fucli -u "$url" push action "$buylowsellhi_contract" settrademkt "$data" -p "$buylowsellhi_contract@active"
 
 trade_pair="sing.usdt"
-min_trade_amount="10.00000000 SING"
-max_trade_amount="30.00000000 SING"
+min_trade_amount="3.00000000 SING"
+max_trade_amount="12.00000000 SING"
 target_price=0.1
 data='["'$trade_pair'","'$target_price'","'"$min_trade_amount"'","'"$max_trade_amount"'","",["'"$trade_updater"'"]]'
 fucli -u "$url" push action "$buylowsellhi_contract" settrademkt "$data" -p "$buylowsellhi_contract@active"
@@ -33,20 +33,20 @@ fucli -u "$url" push action "$buylowsellhi_contract" settrademkt "$data" -p "$bu
 
 ```bash
 trade_pair="flon.usdt"
-fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.005,0.008]' -p "$trade_updater@active"
+fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.004,0.006]' -p "$trade_updater@active"
 
 trade_pair="sing.usdt"
-fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.005,0.015]' -p "$trade_updater@active"
+fucli -u "$url" push action "$buylowsellhi_contract" setslippage '["'$trade_updater'","'$trade_pair'",0.004,0.008]' -p "$trade_updater@active"
 ```
 
 After deploying a `buylowsellhi` build that contains `settradeint`, spread the contract cadence:
 
 ```bash
 trade_pair="flon.usdt"
-fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",30,120]' -p "$buylowsellhi_contract@active"
+fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",90,240]' -p "$buylowsellhi_contract@active"
 
 trade_pair="sing.usdt"
-fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",20,75]' -p "$buylowsellhi_contract@active"
+fucli -u "$url" push action "$buylowsellhi_contract" settradeint '["'$trade_pair'",45,150]' -p "$buylowsellhi_contract@active"
 ```
 
 ## 4. Get current trade market config

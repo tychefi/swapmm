@@ -384,11 +384,11 @@ namespace flon {
          // Inside the target band, keep a stable intrabar side preference with mean-reversion and inventory bias.
          uint32_t left_side_probability_bps = apply_inventory_bias_bps(side_bias.left_probability_bps, left_inventory_bps);
          is_left_side = (rand % 10000) < left_side_probability_bps;
-      }
-      if (left_inventory_bps < 1000 && bot_market_itr->right_pool.total_quantity.amount > 0) {
-         is_left_side = false;
-      } else if (left_inventory_bps > 9000 && bot_market_itr->left_pool.total_quantity.amount > 0) {
-         is_left_side = true;
+         if (left_inventory_bps < 1000 && bot_market_itr->right_pool.total_quantity.amount > 0) {
+            is_left_side = false;
+         } else if (left_inventory_bps > 9000 && bot_market_itr->left_pool.total_quantity.amount > 0) {
+            is_left_side = true;
+         }
       }
       bool counter_primary_side = inside_sideways_band && (is_left_side != side_bias.primary_left);
       int64_t trading_left_amount = calc_trade_left_amount( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
