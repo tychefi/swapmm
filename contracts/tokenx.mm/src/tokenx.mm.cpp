@@ -12,13 +12,13 @@ namespace flon {
 
    static const name LEFT_SIDE = "left"_n;
    static const name RIGHT_SIDE = "right"_n;
-   static constexpr uint32_t TREND_ANCHOR_SECONDS = 1800;
+   static constexpr uint32_t TREND_ANCHOR_SECONDS = 2700;
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
-   static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.65;
-   static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.55;
+   static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.50;
+   static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.70;
    static constexpr uint32_t CANDLE_SECONDS = 300;
-   static constexpr uint32_t CANDLE_PLAN_CYCLE = 7;
-   static constexpr double PULLBACK_MAX_DISTANCE_RATIO = 0.70;
+   static constexpr uint32_t CANDLE_PLAN_CYCLE = 11;
+   static constexpr double PULLBACK_MAX_DISTANCE_RATIO = 0.45;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -199,7 +199,7 @@ namespace flon {
       uint32_t plan_phase = (candle_segment + (trade_pair_seed(trade_pair_name) % CANDLE_PLAN_CYCLE)) % CANDLE_PLAN_CYCLE;
       bool pullback_candle = false;
       if (distance_ratio < PULLBACK_MAX_DISTANCE_RATIO) {
-         if (plan_phase == 3 || plan_phase == 6) {
+         if (plan_phase == 5) {
             pullback_candle = true;
          }
       }
@@ -225,16 +225,16 @@ namespace flon {
       if (max_amount <= min_amount) return min_amount;
 
       int64_t total_span = max_amount - min_amount;
-      uint32_t span_bps = 2500 + (rand % 7501);
+      uint32_t span_bps = 1500 + (rand % 5501);
       if (counter_primary_side) {
-         span_bps = 1000 + (mix32(rand ^ 0x27d4eb2du) % 4501);
+         span_bps = 600 + (mix32(rand ^ 0x27d4eb2du) % 3001);
       }
 
       uint32_t segment = now_seconds / 900;
       uint32_t rhythm_rand = mix32(trade_pair_seed(trade_pair_name) ^ (segment * 3266489917u) ^ (rand >> 7));
-      uint32_t rhythm_bps = 6500 + (rhythm_rand % 5501);
-      if ((rhythm_rand % 100) < 18) {
-         rhythm_bps = 11500 + (rhythm_rand % 2501);
+      uint32_t rhythm_bps = 6000 + (rhythm_rand % 4501);
+      if ((rhythm_rand % 100) < 8) {
+         rhythm_bps = 10500 + (rhythm_rand % 1501);
       }
       int64_t adjusted_span = total_span * span_bps / 10000;
       adjusted_span = adjusted_span * rhythm_bps / 10000;
