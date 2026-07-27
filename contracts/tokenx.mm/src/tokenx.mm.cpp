@@ -16,8 +16,6 @@ namespace flon {
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
    static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.30;
    static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.50;
-   static constexpr double MICRO_COUNTER_DISTANCE_RATIO = 0.28;
-   static constexpr uint32_t MICRO_COUNTER_CHANCE_PCT = 18;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -194,14 +192,8 @@ namespace flon {
       }
 
       bool body_left = primary_left;
-      if (distance_ratio < MICRO_COUNTER_DISTANCE_RATIO) {
-         uint32_t counter_rand = mix32(rand ^ trade_pair_seed(trade_pair_name) ^ (now_seconds / 60));
-         if ((counter_rand % 100) < MICRO_COUNTER_CHANCE_PCT) {
-            body_left = !primary_left;
-         }
-      }
 
-      return market_direction_t{ body_left, primary_left, reference_price };
+      return market_direction_t{ body_left, body_left, reference_price };
    }
 
    static int64_t calc_depth_limited_input_amount(const asset& input_reserve, double fluctuation_ratio) {
