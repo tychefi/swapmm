@@ -12,13 +12,10 @@ namespace flon {
 
    static const name LEFT_SIDE = "left"_n;
    static const name RIGHT_SIDE = "right"_n;
-   static constexpr uint32_t TREND_ANCHOR_SECONDS = 2700;
+   static constexpr uint32_t TREND_ANCHOR_SECONDS = 5400;
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
-   static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.50;
-   static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.70;
-   static constexpr uint32_t CANDLE_SECONDS = 300;
-   static constexpr uint32_t CANDLE_PLAN_CYCLE = 11;
-   static constexpr double PULLBACK_MAX_DISTANCE_RATIO = 0.45;
+   static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.30;
+   static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.50;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -194,19 +191,7 @@ namespace flon {
          primary_left = corrective_left;
       }
 
-      uint32_t candle_segment = now_seconds / CANDLE_SECONDS;
-      uint32_t seconds_in_candle = now_seconds % CANDLE_SECONDS;
-      uint32_t plan_phase = (candle_segment + (trade_pair_seed(trade_pair_name) % CANDLE_PLAN_CYCLE)) % CANDLE_PLAN_CYCLE;
-      bool pullback_candle = false;
-      if (distance_ratio < PULLBACK_MAX_DISTANCE_RATIO) {
-         if (plan_phase == 5) {
-            pullback_candle = true;
-         }
-      }
       bool body_left = primary_left;
-      if (pullback_candle) {
-         body_left = !primary_left;
-      }
 
       return market_direction_t{ body_left, body_left, reference_price };
    }
