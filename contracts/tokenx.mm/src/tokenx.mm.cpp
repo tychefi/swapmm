@@ -12,10 +12,10 @@ namespace flon {
 
    static const name LEFT_SIDE = "left"_n;
    static const name RIGHT_SIDE = "right"_n;
-   static constexpr uint32_t TREND_ANCHOR_SECONDS = 5400;
+   static constexpr uint32_t TREND_ANCHOR_SECONDS = 1800;
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
-   static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.30;
-   static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.50;
+   static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.05;
+   static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.05;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
