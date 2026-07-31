@@ -14,8 +14,9 @@ namespace flon {
    static const name RIGHT_SIDE = "right"_n;
    static constexpr uint32_t TREND_ANCHOR_SECONDS = 1800;
    static constexpr double CORRECTION_BAND_MULTIPLIER = 2.0;
-   static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.05;
-   static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.05;
+   static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.02;
+   static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.03;
+   static constexpr uint32_t MAX_CORRECTIVE_SIDE_BPS = 8500;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -162,36 +163,37 @@ namespace flon {
                                                    double min_correction_price, double max_correction_price,
                                                    const name& trade_pair_name, uint32_t now_seconds, uint32_t rand) {
       double reference_price = calc_dynamic_reference_price(target_price, fluctuation_ratio, trade_pair_name, now_seconds);
-      double next_reference_price = calc_dynamic_reference_price(target_price, fluctuation_ratio, trade_pair_name,
-                                                                 now_seconds + 300);
-      bool trend_left = next_reference_price < reference_price;
       double min_sideways_price = target_price * (1 - fluctuation_ratio);
       double max_sideways_price = target_price * (1 + fluctuation_ratio);
       double band_width = max(target_price * fluctuation_ratio, target_price * 0.0001);
 
       if (left_price < min_correction_price) {
-         return market_direction_t{ false, trend_left, reference_price };
+         return market_direction_t{ false, false, reference_price };
       }
       if (left_price > max_correction_price) {
-         return market_direction_t{ true, trend_left, reference_price };
+         return market_direction_t{ true, true, reference_price };
       }
       if (left_price < min_sideways_price) {
-         return market_direction_t{ false, trend_left, reference_price };
+         return market_direction_t{ false, false, reference_price };
       }
       if (left_price > max_sideways_price) {
-         return market_direction_t{ true, trend_left, reference_price };
+         return market_direction_t{ true, true, reference_price };
       }
 
       double diff = left_price - reference_price;
       double abs_diff = abs_double(diff);
       double distance_ratio = clamp_double(abs_diff / band_width, 0.0, 1.0);
       bool corrective_left = diff > 0;
-      bool primary_left = trend_left;
-      if (distance_ratio >= BODY_CORRECTION_DISTANCE_RATIO) {
-         primary_left = corrective_left;
+
+      uint32_t decision_rand = mix32(rand ^ trade_pair_seed(trade_pair_name) ^ ((now_seconds / 20) * 3266489917u));
+      if (distance_ratio < BODY_CORRECTION_DISTANCE_RATIO) {
+         bool random_left = (decision_rand & 1u) == 0;
+         return market_direction_t{ random_left, random_left, reference_price };
       }
 
-      bool body_left = primary_left;
+      double correction_strength = clamp_double((distance_ratio - BODY_CORRECTION_DISTANCE_RATIO) / 0.25, 0.0, 1.0);
+      uint32_t corrective_bps = 5000 + uint32_t(correction_strength * double(MAX_CORRECTIVE_SIDE_BPS - 5000));
+      bool body_left = (decision_rand % 10000u) < corrective_bps ? corrective_left : !corrective_left;
 
       return market_direction_t{ body_left, body_left, reference_price };
    }
