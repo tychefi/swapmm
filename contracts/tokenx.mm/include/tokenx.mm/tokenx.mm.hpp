@@ -47,6 +47,8 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
    ACTION setmarket( const name& trade_pair_name, const name& fund_account, const name& bot_group_name );
 
    ACTION trade( const name& bot, const name& trade_pair_name, const string& memo );
+   ACTION buy( const name& bot, const name& trade_pair_name, const string& memo );
+   ACTION sell( const name& bot, const name& trade_pair_name, const string& memo );
 
    [[eosio::on_notify("*::transfer")]]
    void on_transfer(const name& from, const name& to, const asset& quant, const string& memo);
@@ -70,6 +72,7 @@ class [[eosio::contract("tokenx.mm")]] tokenx_mm : public contract {
    private:
       const name& require_admin_auth() const;
       void check_paused() const;
+      void execute_trade( const name& bot, const name& trade_pair_name, const string& memo, const name& forced_side );
       void do_trade(const name& side, const bot_market_t& bot_market, dex_pool_side_t& input_pool, dex_pool_side_t& output_pool, double min_price, int64_t input_amount, const name& bot, size_t bot_size);
 
 };

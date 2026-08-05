@@ -38,6 +38,30 @@ summary: Execute a trade.
 
 This action performs a trade.
 
+<h1 class="contract">buy</h1>
+
+---
+spec_version: "0.2.0"
+title: Buy
+summary: Execute a controlled buy-side market-making trade.
+---
+
+This action attempts a controlled buy-side trade. It shares the market schedule,
+inventory checks, slippage checks, and depth limits with the trade action, and
+only executes when the target price or strategy allows the buy side.
+
+<h1 class="contract">sell</h1>
+
+---
+spec_version: "0.2.0"
+title: Sell
+summary: Execute a controlled sell-side market-making trade.
+---
+
+This action attempts a controlled sell-side trade. It shares the market schedule,
+inventory checks, slippage checks, and depth limits with the trade action, and
+only executes when the target price or strategy allows the sell side.
+
 <h1 class="contract">afterswap</h1>
 
 ---

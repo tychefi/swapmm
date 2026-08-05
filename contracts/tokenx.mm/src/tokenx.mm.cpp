@@ -399,7 +399,22 @@ namespace flon {
    }
 
    void tokenx_mm::trade( const name& bot, const name& trade_pair_name, const string& memo ) {
+      execute_trade(bot, trade_pair_name, memo, name{});
+   }
+
+   void tokenx_mm::buy( const name& bot, const name& trade_pair_name, const string& memo ) {
+      execute_trade(bot, trade_pair_name, memo, RIGHT_SIDE);
+   }
+
+   void tokenx_mm::sell( const name& bot, const name& trade_pair_name, const string& memo ) {
+      execute_trade(bot, trade_pair_name, memo, LEFT_SIDE);
+   }
+
+   void tokenx_mm::execute_trade( const name& bot, const name& trade_pair_name, const string& memo, const name& forced_side ) {
       require_auth(bot);
+      CHECKC( forced_side.value == 0 || forced_side == LEFT_SIDE || forced_side == RIGHT_SIDE,
+         err::PARAM_ERROR, "invalid forced trade side: " + forced_side.to_string() )
+
       bot_market_t::idx_t bot_markets( get_self(), get_self().value );
       auto bot_market_itr = bot_markets.find(trade_pair_name.value);
       CHECKC( bot_market_itr != bot_markets.end(), err::RECORD_NOT_FOUND, "bot market not existing: " + trade_pair_name.to_string() )
@@ -466,7 +481,15 @@ namespace flon {
                                                                   market_itr->fluctuation_ratio,
                                                                   min_correction_price, max_correction_price,
                                                                   bot_market_itr->trade_pair_name, now_seconds, rand);
-      bool is_left_side = market_direction.is_left_side;
+      const name strategy_side = market_direction.is_left_side ? LEFT_SIDE : RIGHT_SIDE;
+      bool forced_buy_allowed = forced_side == RIGHT_SIDE &&
+         (left_price < market_itr->target_price || strategy_side == RIGHT_SIDE);
+      bool forced_sell_allowed = forced_side == LEFT_SIDE &&
+         (left_price > market_itr->target_price || strategy_side == LEFT_SIDE);
+      CHECKC( forced_side.value == 0 || forced_buy_allowed || forced_sell_allowed,
+         err::STATUS_ERROR, "forced " + forced_side.to_string() + " side is not allowed by target price or strategy" )
+
+      bool is_left_side = forced_side.value == 0 ? market_direction.is_left_side : forced_side == LEFT_SIDE;
       bool counter_primary_side = inside_sideways_band && (is_left_side != market_direction.primary_left);
       int64_t trading_left_amount = calc_trade_left_amount( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
                                                             rand ^ 0x9e3779b9u, bot_market_itr->trade_pair_name,
