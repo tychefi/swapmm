@@ -17,6 +17,11 @@ namespace flon {
    static constexpr double DYNAMIC_TARGET_OFFSET_RATIO = 0.02;
    static constexpr double BODY_CORRECTION_DISTANCE_RATIO = 0.03;
    static constexpr uint32_t MAX_CORRECTIVE_SIDE_BPS = 8500;
+   static constexpr double TARGET_CROSS_FULL_BIAS_RATIO = 0.12;
+   static constexpr uint32_t TARGET_CROSS_MIN_BUY_BPS = 7000;
+   static constexpr uint32_t TARGET_CROSS_MAX_BUY_BPS = 9500;
+   static constexpr uint32_t TARGET_CROSS_MIN_AMOUNT_BPS = 6500;
+   static constexpr uint32_t TARGET_CROSS_COUNTER_AMOUNT_BPS = 4500;
 
    // scope: buylowsellhi contract
    struct trade_market_t {
@@ -115,6 +120,7 @@ namespace flon {
       bool     is_left_side;
       bool     primary_left;
       double   reference_price;
+      bool     target_cross_up_bias;
    };
 
    static uint32_t trade_pair_seed(const name& trade_pair_name) {
@@ -168,16 +174,29 @@ namespace flon {
       double band_width = max(target_price * fluctuation_ratio, target_price * 0.0001);
 
       if (left_price < min_correction_price) {
-         return market_direction_t{ false, false, reference_price };
+         return market_direction_t{ false, false, reference_price, true };
       }
       if (left_price > max_correction_price) {
-         return market_direction_t{ true, true, reference_price };
+         return market_direction_t{ true, true, reference_price, false };
       }
       if (left_price < min_sideways_price) {
-         return market_direction_t{ false, false, reference_price };
+         return market_direction_t{ false, false, reference_price, true };
       }
       if (left_price > max_sideways_price) {
-         return market_direction_t{ true, true, reference_price };
+         return market_direction_t{ true, true, reference_price, false };
+      }
+
+      bool target_cross_up_bias = target_price > 0 && left_price < target_price;
+      uint32_t decision_rand = mix32(rand ^ trade_pair_seed(trade_pair_name) ^ ((now_seconds / 20) * 3266489917u));
+      if (target_cross_up_bias) {
+         double target_gap_ratio = clamp_double((target_price - left_price) / band_width, 0.0, 1.0);
+         double bias_strength = clamp_double(target_gap_ratio / TARGET_CROSS_FULL_BIAS_RATIO, 0.0, 1.0);
+         uint32_t buy_bps = TARGET_CROSS_MIN_BUY_BPS +
+            uint32_t(bias_strength * double(TARGET_CROSS_MAX_BUY_BPS - TARGET_CROSS_MIN_BUY_BPS));
+         bool buy_to_cross = (decision_rand % 10000u) < buy_bps;
+         if (buy_to_cross) {
+            return market_direction_t{ false, false, reference_price, true };
+         }
       }
 
       double diff = left_price - reference_price;
@@ -185,17 +204,18 @@ namespace flon {
       double distance_ratio = clamp_double(abs_diff / band_width, 0.0, 1.0);
       bool corrective_left = diff > 0;
 
-      uint32_t decision_rand = mix32(rand ^ trade_pair_seed(trade_pair_name) ^ ((now_seconds / 20) * 3266489917u));
       if (distance_ratio < BODY_CORRECTION_DISTANCE_RATIO) {
          bool random_left = (decision_rand & 1u) == 0;
-         return market_direction_t{ random_left, random_left, reference_price };
+         return market_direction_t{ random_left, target_cross_up_bias ? false : random_left,
+                                    reference_price, target_cross_up_bias };
       }
 
       double correction_strength = clamp_double((distance_ratio - BODY_CORRECTION_DISTANCE_RATIO) / 0.25, 0.0, 1.0);
       uint32_t corrective_bps = 5000 + uint32_t(correction_strength * double(MAX_CORRECTIVE_SIDE_BPS - 5000));
       bool body_left = (decision_rand % 10000u) < corrective_bps ? corrective_left : !corrective_left;
 
-      return market_direction_t{ body_left, body_left, reference_price };
+      return market_direction_t{ body_left, target_cross_up_bias ? false : body_left,
+                                 reference_price, target_cross_up_bias };
    }
 
    static int64_t calc_depth_limited_input_amount(const asset& input_reserve, double fluctuation_ratio) {
@@ -226,6 +246,23 @@ namespace flon {
       int64_t adjusted_span = total_span * span_bps / 10000;
       adjusted_span = adjusted_span * rhythm_bps / 10000;
       return min(max_amount, min_amount + adjusted_span);
+   }
+
+   static int64_t apply_target_cross_amount_bias(int64_t amount, int64_t min_amount, int64_t max_amount,
+                                                 uint32_t rand, bool is_left_side, bool target_cross_up_bias) {
+      if (!target_cross_up_bias || max_amount <= min_amount) return amount;
+
+      int64_t total_span = max_amount - min_amount;
+      if (!is_left_side) {
+         uint32_t boost_rand = mix32(rand ^ 0x165667b1u);
+         uint32_t extra_bps = boost_rand % (10001u - TARGET_CROSS_MIN_AMOUNT_BPS);
+         uint32_t amount_bps = TARGET_CROSS_MIN_AMOUNT_BPS + extra_bps;
+         int64_t boosted_amount = min_amount + total_span * amount_bps / 10000;
+         return min(max_amount, max(amount, boosted_amount));
+      }
+
+      int64_t counter_span = amount > min_amount ? amount - min_amount : 0;
+      return min_amount + counter_span * TARGET_CROSS_COUNTER_AMOUNT_BPS / 10000;
    }
 
    static uint32_t calc_left_inventory_value_bps(const bot_market_t& bot_market, double left_price) {
@@ -434,6 +471,10 @@ namespace flon {
       int64_t trading_left_amount = calc_trade_left_amount( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
                                                             rand ^ 0x9e3779b9u, bot_market_itr->trade_pair_name,
                                                             now_seconds, counter_primary_side );
+      trading_left_amount = apply_target_cross_amount_bias(trading_left_amount, market_itr->min_trade_amount.amount,
+                                                           market_itr->max_trade_amount.amount,
+                                                           rand ^ 0x85ebca6bu, is_left_side,
+                                                           market_direction.target_cross_up_bias);
       trading_left_amount = apply_inventory_amount_limit(trading_left_amount, market_itr->min_trade_amount.amount,
                                                          is_left_side, left_inventory_bps);
 
