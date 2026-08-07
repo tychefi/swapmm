@@ -290,6 +290,30 @@ namespace flon {
       return std::max<int64_t>(min_amount, amount * scale_bps / 10000);
    }
 
+   static bool memo_has_tag(const string& memo, const string& tag) {
+      return memo.find(tag) != string::npos;
+   }
+
+   static int64_t apply_candle_phase_amount(int64_t amount, int64_t min_amount, int64_t max_amount,
+                                            const string& memo) {
+      if (max_amount <= min_amount) return amount;
+
+      int64_t total_span = max_amount - min_amount;
+      if (memo_has_tag(memo, "candle_phase=open_wick")) {
+         int64_t wick_amount = min_amount + total_span * 7500 / 10000;
+         return min(max_amount, max(amount, wick_amount));
+      }
+      if (memo_has_tag(memo, "candle_phase=close_wick")) {
+         int64_t wick_amount = min_amount + total_span * 5500 / 10000;
+         return min(max_amount, max(amount, wick_amount));
+      }
+      if (memo_has_tag(memo, "candle_phase=close")) {
+         int64_t close_amount = min_amount + total_span * 5000 / 10000;
+         return min(amount, close_amount);
+      }
+      return amount;
+   }
+
    DEFINE_VERSION_CONTRACT_CLASS("tokenx.mm", tokenx_mm)
 
    static uint32_t get_random() {
@@ -500,6 +524,8 @@ namespace flon {
                                                            market_direction.target_cross_up_bias);
       trading_left_amount = apply_inventory_amount_limit(trading_left_amount, market_itr->min_trade_amount.amount,
                                                          is_left_side, left_inventory_bps);
+      trading_left_amount = apply_candle_phase_amount(trading_left_amount, market_itr->min_trade_amount.amount,
+                                                      market_itr->max_trade_amount.amount, memo);
 
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
 
