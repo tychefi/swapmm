@@ -483,9 +483,9 @@ namespace flon {
                                                                   bot_market_itr->trade_pair_name, now_seconds, rand);
       const name strategy_side = market_direction.is_left_side ? LEFT_SIDE : RIGHT_SIDE;
       bool forced_buy_allowed = forced_side == RIGHT_SIDE &&
-         (left_price < market_itr->target_price || strategy_side == RIGHT_SIDE);
+         (inside_sideways_band || left_price < market_itr->target_price || strategy_side == RIGHT_SIDE);
       bool forced_sell_allowed = forced_side == LEFT_SIDE &&
-         (left_price > market_itr->target_price || strategy_side == LEFT_SIDE);
+         (inside_sideways_band || left_price > market_itr->target_price || strategy_side == LEFT_SIDE);
       CHECKC( forced_side.value == 0 || forced_buy_allowed || forced_sell_allowed,
          err::STATUS_ERROR, "forced " + forced_side.to_string() + " side is not allowed by target price or strategy" )
 
