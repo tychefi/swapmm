@@ -294,21 +294,31 @@ namespace flon {
       return memo.find(tag) != string::npos;
    }
 
+   static uint32_t random_bps(uint32_t rand, uint32_t min_bps, uint32_t max_bps) {
+      ASSERT(max_bps >= min_bps);
+      if (max_bps == min_bps) return max_bps;
+      return min_bps + (mix32(rand) % (max_bps - min_bps + 1));
+   }
+
+   static int64_t amount_at_span_bps(int64_t min_amount, int64_t max_amount, uint32_t span_bps) {
+      int64_t total_span = max_amount - min_amount;
+      return min(max_amount, min_amount + total_span * span_bps / 10000);
+   }
+
    static int64_t apply_candle_phase_amount(int64_t amount, int64_t min_amount, int64_t max_amount,
-                                            const string& memo) {
+                                            const string& memo, uint32_t rand) {
       if (max_amount <= min_amount) return amount;
 
-      int64_t total_span = max_amount - min_amount;
       if (memo_has_tag(memo, "candle_phase=open_wick")) {
-         int64_t wick_amount = min_amount + total_span * 7500 / 10000;
+         int64_t wick_amount = amount_at_span_bps(min_amount, max_amount, random_bps(rand ^ 0x5bd1e995u, 5200, 9800));
          return min(max_amount, max(amount, wick_amount));
       }
       if (memo_has_tag(memo, "candle_phase=close_wick")) {
-         int64_t wick_amount = min_amount + total_span * 5500 / 10000;
+         int64_t wick_amount = amount_at_span_bps(min_amount, max_amount, random_bps(rand ^ 0x27d4eb2fu, 3800, 8800));
          return min(max_amount, max(amount, wick_amount));
       }
       if (memo_has_tag(memo, "candle_phase=close")) {
-         int64_t close_amount = min_amount + total_span * 5000 / 10000;
+         int64_t close_amount = amount_at_span_bps(min_amount, max_amount, random_bps(rand ^ 0x165667b1u, 2500, 7000));
          return min(amount, close_amount);
       }
       return amount;
@@ -525,7 +535,7 @@ namespace flon {
       trading_left_amount = apply_inventory_amount_limit(trading_left_amount, market_itr->min_trade_amount.amount,
                                                          is_left_side, left_inventory_bps);
       trading_left_amount = apply_candle_phase_amount(trading_left_amount, market_itr->min_trade_amount.amount,
-                                                      market_itr->max_trade_amount.amount, memo);
+                                                      market_itr->max_trade_amount.amount, memo, rand ^ 0xc2b2ae35u);
 
       const auto& side = is_left_side ? LEFT_SIDE : RIGHT_SIDE;
 
