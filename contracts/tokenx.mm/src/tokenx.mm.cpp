@@ -528,10 +528,12 @@ namespace flon {
       int64_t trading_left_amount = calc_trade_left_amount( market_itr->min_trade_amount.amount, market_itr->max_trade_amount.amount,
                                                             rand ^ 0x9e3779b9u, bot_market_itr->trade_pair_name,
                                                             now_seconds, counter_primary_side );
-      trading_left_amount = apply_target_cross_amount_bias(trading_left_amount, market_itr->min_trade_amount.amount,
-                                                           market_itr->max_trade_amount.amount,
-                                                           rand ^ 0x85ebca6bu, is_left_side,
-                                                           market_direction.target_cross_up_bias);
+      if (forced_side.value == 0) {
+         trading_left_amount = apply_target_cross_amount_bias(trading_left_amount, market_itr->min_trade_amount.amount,
+                                                              market_itr->max_trade_amount.amount,
+                                                              rand ^ 0x85ebca6bu, is_left_side,
+                                                              market_direction.target_cross_up_bias);
+      }
       trading_left_amount = apply_inventory_amount_limit(trading_left_amount, market_itr->min_trade_amount.amount,
                                                          is_left_side, left_inventory_bps);
       trading_left_amount = apply_candle_phase_amount(trading_left_amount, market_itr->min_trade_amount.amount,
