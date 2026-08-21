@@ -221,8 +221,9 @@ namespace flon {
    static int64_t calc_depth_limited_input_amount(const asset& input_reserve, double fluctuation_ratio) {
       CHECK( input_reserve.amount > 0, "invalid dex input reserve" )
 
-      // Limit a single bot trade to a small fraction of pool depth. Smaller configured bands imply smaller per-trade impact.
-      double max_reserve_ratio = clamp_double(fluctuation_ratio * 0.05, 0.0002, 0.002);
+      // Limit a single bot trade to a controlled fraction of pool depth.
+      // Wider configured bands need enough per-trade impact to actually traverse the range.
+      double max_reserve_ratio = clamp_double(fluctuation_ratio * 0.05, 0.0002, 0.006);
       int64_t depth_limited_amount = (int64_t)((double)input_reserve.amount * max_reserve_ratio);
       return std::max<int64_t>(1, depth_limited_amount);
    }
